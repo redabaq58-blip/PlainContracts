@@ -1,0 +1,241 @@
+import { getAnthropicClient } from "./client";
+import { runLayer1 } from "./layer1-intel";
+import { buildLayer2SystemPrompt, buildLayer2UserPrompt } from "./layer2-translate";
+import { runLayer3, reviseFlags } from "./layer3-verify";
+import { parseJsonSection } from "@/lib/utils/parseSections";
+import { calculatePowerScore } from "@/lib/utils/powerScore";
+import type {
+  AudienceLevel,
+  AnalysisMode,
+  Layer1Result,
+  RedFlag,
+} from "@/types";
+
+// ─── SSE helpers ─────────────────────────────────────────────────────────────
+
+function sseEvent(data: unknown): string {
+  return `data: ${JSON.stringify(data)}\n\n`;
+}
+
+function sseDone(): string {
+  return `done: true\n\n`;
+}
+
+// ─── Section parser (mid-stream) ──────────────────────────────────────────────
+
+const SECTION_PREFIX = "<!-- SECTION:";
+const SECTION_SUFFIX = " -->";
+
+interface StreamParserState {
+  buffer: string;
+  currentSection: string | null;
+  accumulated: Record<string, string>;
+}
+
+function processChunk(
+  state: StreamParserState,
+  chunk: string,
+  onDelta: (section: string, text: string) => void,
+  onSection: (section: string) => void
+): void {
+  state.buffer += chunk;
+
+  while (true) {
+    const delimStart = state.buffer.indexOf(SECTION_PREFIX);
+
+    if (delimStart === -1) {
+      // No delimiter found — check for potential partial delimiter at the end
+      const partialIdx = findPartialDelimiter(state.buffer);
+      if (partialIdx !== -1) {
+        // Emit everything before the potential partial
+        const safeText = state.buffer.slice(0, partialIdx);
+        if (state.currentSection && safeText) {
+          state.accumulated[state.currentSection] =
+            (state.accumulated[state.currentSection] ?? "") + safeText;
+          onDelta(state.currentSection, safeText);
+        }
+        state.buffer = state.buffer.slice(partialIdx);
+      } else {
+        // Safe to emit everything
+        if (state.currentSection && state.buffer) {
+          state.accumulated[state.currentSection] =
+            (state.accumulated[state.currentSection] ?? "") + state.buffer;
+          onDelta(state.currentSection, state.buffer);
+        }
+        state.buffer = "";
+      }
+      break;
+    }
+
+    // Emit text before this delimiter
+    if (delimStart > 0 && state.currentSection) {
+      const before = state.buffer.slice(0, delimStart);
+      state.accumulated[state.currentSection] =
+        (state.accumulated[state.currentSection] ?? "") + before;
+      onDelta(state.currentSection, before);
+    }
+
+    // Find end of delimiter
+    const delimEnd = state.buffer.indexOf(
+      SECTION_SUFFIX,
+      delimStart + SECTION_PREFIX.length
+    );
+    if (delimEnd === -1) {
+      // Incomplete delimiter — hold the buffer
+      state.buffer = state.buffer.slice(delimStart);
+      break;
+    }
+
+    const sectionName = state.buffer.slice(
+      delimStart + SECTION_PREFIX.length,
+      delimEnd
+    );
+    state.currentSection = sectionName;
+    state.accumulated[sectionName] = state.accumulated[sectionName] ?? "";
+    onSection(sectionName);
+    state.buffer = state.buffer.slice(delimEnd + SECTION_SUFFIX.length);
+  }
+}
+
+function findPartialDelimiter(text: string): number {
+  for (let i = 1; i < SECTION_PREFIX.length; i++) {
+    if (text.endsWith(SECTION_PREFIX.slice(0, i))) {
+      return text.length - i;
+    }
+  }
+  return -1;
+}
+
+// ─── Main pipeline ────────────────────────────────────────────────────────────
+
+export interface PipelineOptions {
+  contractText: string;
+  audienceLevel: AudienceLevel;
+  mode: AnalysisMode;
+  privacyMode?: boolean;
+  layer1Cache?: Layer1Result;
+}
+
+/**
+ * Runs the full 3-layer contract analysis pipeline.
+ * Yields Server-Sent Events as a ReadableStream.
+ */
+export function encodePipelineStream(options: PipelineOptions): ReadableStream {
+  const {
+    contractText,
+    audienceLevel,
+    mode,
+    privacyMode = false,
+    layer1Cache,
+  } = options;
+
+  return new ReadableStream({
+    async start(controller) {
+      const enc = new TextEncoder();
+      const emit = (data: string) => controller.enqueue(enc.encode(data));
+
+      try {
+        // ── Layer 1 ──────────────────────────────────────────────────────────
+        let layer1Result: Layer1Result;
+
+        if (layer1Cache) {
+          layer1Result = layer1Cache;
+        } else {
+          layer1Result = await runLayer1(contractText, privacyMode);
+        }
+
+        emit(sseEvent({ type: "layer1", result: layer1Result }));
+
+        // ── Layer 2 (streaming) ───────────────────────────────────────────────
+        const client = getAnthropicClient(privacyMode);
+        const systemPrompt = buildLayer2SystemPrompt(audienceLevel, mode, layer1Result);
+        const userPrompt = buildLayer2UserPrompt(contractText, mode);
+
+        const parserState: StreamParserState = {
+          buffer: "",
+          currentSection: null,
+          accumulated: {},
+        };
+
+        const stream = client.messages.stream({
+          model: "claude-sonnet-4-6",
+          max_tokens: 4096,
+          system: systemPrompt,
+          messages: [{ role: "user", content: userPrompt }],
+        });
+
+        await new Promise<void>((resolve, reject) => {
+          stream.on("text", (text: string) => {
+            processChunk(
+              parserState,
+              text,
+              (section, delta) => {
+                emit(sseEvent({ type: "delta", section, text: delta }));
+              },
+              (section) => {
+                emit(sseEvent({ type: "section_start", section }));
+              }
+            );
+          });
+
+          stream.on("error", reject);
+          stream.on("finalMessage", () => resolve());
+        });
+
+        // Flush remaining buffer
+        if (parserState.buffer && parserState.currentSection) {
+          parserState.accumulated[parserState.currentSection] =
+            (parserState.accumulated[parserState.currentSection] ?? "") +
+            parserState.buffer;
+          emit(sseEvent({ type: "delta", section: parserState.currentSection, text: parserState.buffer }));
+        }
+
+        // Reconstruct full Layer 2 text from accumulated sections
+        const layer2Text = Object.entries(parserState.accumulated)
+          .map(([k, v]) => `<!-- SECTION:${k} -->\n${v}`)
+          .join("\n\n");
+
+        // ── Layer 3 (verification) ────────────────────────────────────────────
+        emit(sseEvent({ type: "verifying" }));
+
+        let layer3Result = await runLayer3(contractText, layer2Text, privacyMode);
+
+        // Auto-revise red flags if Layer 3 found errors
+        if (!layer3Result.accurate && layer3Result.errors.length > 0) {
+          const originalFlags = parserState.accumulated["REDFLAGS"] ?? "";
+          const revised = await reviseFlags(
+            contractText,
+            originalFlags,
+            layer3Result.errors,
+            privacyMode
+          );
+          if (revised !== originalFlags) {
+            parserState.accumulated["REDFLAGS"] = revised;
+            emit(sseEvent({ type: "section_revised", section: "REDFLAGS", text: revised }));
+          }
+        }
+
+        // Calculate power score
+        const redFlags = parseJsonSection<RedFlag[]>(
+          parserState.accumulated["REDFLAGS"],
+          []
+        );
+        const missingText = parserState.accumulated["MISSING"] ?? "";
+        const powerScore = calculatePowerScore(redFlags, missingText);
+
+        emit(sseEvent({ type: "layer3", result: layer3Result, powerScore }));
+        emit(sseDone());
+      } catch (err) {
+        emit(
+          sseEvent({
+            type: "error",
+            message: err instanceof Error ? err.message : "Unknown error",
+          })
+        );
+        emit(sseDone());
+      } finally {
+        controller.close();
+      }
+    },
+  });
+}
