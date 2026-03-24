@@ -165,6 +165,13 @@ export function encodePipelineStream(options: PipelineOptions): ReadableStream {
         });
 
         await new Promise<void>((resolve, reject) => {
+          let settled = false;
+          const settle = (fn: () => void) => {
+            if (settled) return;
+            settled = true;
+            fn();
+          };
+
           stream.on("text", (text: string) => {
             processChunk(
               parserState,
@@ -172,14 +179,15 @@ export function encodePipelineStream(options: PipelineOptions): ReadableStream {
               (section, delta) => {
                 emit(sseEvent({ type: "delta", section, text: delta }));
               },
-              (section) => {
-                emit(sseEvent({ type: "section_start", section }));
+              (_section) => {
+                // section boundary detected — no SSE event needed, client
+                // infers sections from delimiters in the accumulated text
               }
             );
           });
 
-          stream.on("error", reject);
-          stream.on("finalMessage", () => resolve());
+          stream.on("error", (err: Error) => settle(() => reject(err)));
+          stream.on("finalMessage", () => settle(() => resolve()));
         });
 
         // Flush remaining buffer

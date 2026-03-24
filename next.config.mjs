@@ -1,6 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: "standalone",
+  experimental: {
+    // Prevent pdf-parse (and pdfjs-dist) from being bundled by webpack.
+    // Must be loaded from node_modules at runtime (Next.js 14.x option).
+    serverComponentsExternalPackages: ["pdf-parse"],
+  },
   async headers() {
     return [
       {

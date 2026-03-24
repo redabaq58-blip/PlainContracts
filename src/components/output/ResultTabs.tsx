@@ -22,8 +22,6 @@ import type {
   AnalysisStatus,
   Layer1Result,
   Layer3Result,
-  AudienceLevel,
-  AnalysisMode,
 } from "@/types";
 
 interface ResultTabsProps {
@@ -32,8 +30,6 @@ interface ResultTabsProps {
   layer1Result: Layer1Result | null;
   layer3Result: Layer3Result | null;
   contractText: string;
-  audienceLevel: AudienceLevel;
-  mode: AnalysisMode;
   privacyMode?: boolean;
 }
 

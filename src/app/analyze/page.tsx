@@ -225,8 +225,6 @@ export default function AnalyzePage() {
                   layer1Result={layer1Result}
                   layer3Result={layer3Result}
                   contractText={contractText}
-                  audienceLevel={audienceLevel}
-                  mode={mode}
                   privacyMode={privacyMode}
                 />
               </div>

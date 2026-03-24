@@ -17,12 +17,21 @@ function parseConfidenceText(text: string): {
 } {
   const match = text.match(/^(\d+)\.\s*([\s\S]*)/);
   if (match) {
+    const explanation = match[2].trim();
     return {
-      score: Math.min(100, Math.max(0, parseInt(match[1]))),
-      explanation: match[2].trim(),
+      score: Math.min(100, Math.max(0, parseInt(match[1], 10))),
+      explanation: explanation || "Translation complete.",
     };
   }
-  return { score: 0, explanation: text };
+  // Fallback: maybe the model returned just a number
+  const numOnly = text.match(/^(\d+)$/);
+  if (numOnly) {
+    return {
+      score: Math.min(100, Math.max(0, parseInt(numOnly[1], 10))),
+      explanation: "Translation complete.",
+    };
+  }
+  return { score: 0, explanation: text || "Confidence unavailable." };
 }
 
 export function ConfidencePanel({

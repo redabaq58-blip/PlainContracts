@@ -21,61 +21,30 @@ const AnalyzeSchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
-  const contentType = req.headers.get("content-type") ?? "";
-
-  let body: z.infer<typeof AnalyzeSchema>;
-
-  if (contentType.includes("multipart/form-data")) {
-    // PDF upload path
-    try {
-      const formData = await req.formData();
-      const contractText = formData.get("contractText") as string | null;
-      const audienceLevel = formData.get("audienceLevel") as string;
-      const mode = formData.get("mode") as string;
-      const privacyMode = formData.get("privacyMode") === "true";
-
-      const parsed = AnalyzeSchema.safeParse({
-        contractText: contractText ?? "",
-        audienceLevel,
-        mode,
-        privacyMode,
-      });
-
-      if (!parsed.success) {
-        return NextResponse.json(
-          { error: parsed.error.errors[0]?.message ?? "Invalid input" },
-          { status: 400 }
-        );
-      }
-      body = parsed.data;
-    } catch {
-      return NextResponse.json({ error: "Failed to parse form data" }, { status: 400 });
-    }
-  } else {
-    // JSON path
-    let raw: unknown;
-    try {
-      raw = await req.json();
-    } catch {
-      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
-    }
-
-    const parsed = AnalyzeSchema.safeParse(raw);
-    if (!parsed.success) {
-      return NextResponse.json(
-        { error: parsed.error.errors[0]?.message ?? "Invalid input" },
-        { status: 400 }
-      );
-    }
-    body = parsed.data;
+  let raw: unknown;
+  try {
+    raw = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
+  const parsed = AnalyzeSchema.safeParse(raw);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: parsed.error.errors[0]?.message ?? "Invalid input" },
+      { status: 400 }
+    );
+  }
+
+  const { contractText, audienceLevel, mode, privacyMode, layer1Cache } =
+    parsed.data;
+
   const stream = encodePipelineStream({
-    contractText: body.contractText,
-    audienceLevel: body.audienceLevel,
-    mode: body.mode,
-    privacyMode: body.privacyMode,
-    layer1Cache: body.layer1Cache,
+    contractText,
+    audienceLevel,
+    mode,
+    privacyMode,
+    layer1Cache,
   });
 
   return new Response(stream, {
