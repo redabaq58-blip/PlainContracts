@@ -359,6 +359,11 @@ export default function LandingPage() {
         </div>
       </nav>
 
+      {/* Disclaimer banner — top */}
+      <div className="w-full border-b border-border bg-muted/50 py-2 px-4 text-center text-xs text-muted-foreground">
+        PlainContracts is a contract analysis and drafting tool only. It does not constitute legal advice. Consult a qualified attorney before signing or relying on any contract.
+      </div>
+
       {/* Hero */}
       <section className="container max-w-4xl mx-auto px-4 pt-20 pb-16 text-center">
         <div className="inline-flex items-center gap-1.5 text-xs font-medium bg-muted text-muted-foreground px-3 py-1 rounded-full mb-6">
