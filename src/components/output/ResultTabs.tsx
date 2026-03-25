@@ -18,6 +18,7 @@ import { TimelinePanel } from "./TimelinePanel";
 import { ConfidencePanel } from "./ConfidencePanel";
 import { QAPanel } from "./QAPanel";
 import { DiagramPanel } from "./DiagramPanel";
+import { Tooltip } from "@/components/ui/Tooltip";
 import { cn } from "@/lib/utils/cn";
 import type {
   ParsedSections,
@@ -36,15 +37,15 @@ interface ResultTabsProps {
 }
 
 const tabs = [
-  { id: "SUMMARY", label: "Summary", shortLabel: "Summary", icon: FileText, sectionKey: "SUMMARY" as const },
-  { id: "OBLIGATIONS", label: "Obligations", shortLabel: "Obligations", icon: CheckSquare, sectionKey: "OBLIGATIONS" as const },
-  { id: "POWERS", label: "Their Powers", shortLabel: "Powers", icon: Zap, sectionKey: "POWERS" as const },
-  { id: "REDFLAGS", label: "Red Flags", shortLabel: "Flags", icon: AlertTriangle, sectionKey: "REDFLAGS" as const },
-  { id: "MISSING", label: "Missing Clauses", shortLabel: "Missing", icon: Search, sectionKey: "MISSING" as const },
-  { id: "TIMELINE", label: "Key Dates", shortLabel: "Dates", icon: Calendar, sectionKey: "TIMELINE" as const },
-  { id: "CONFIDENCE", label: "Confidence", shortLabel: "Score", icon: Shield, sectionKey: "CONFIDENCE" as const },
-  { id: "DIAGRAM", label: "Diagram", shortLabel: "Chart", icon: GitGraph, sectionKey: "DIAGRAM" as const },
-  { id: "QA", label: "Ask", shortLabel: "Ask", icon: MessageSquare, sectionKey: null },
+  { id: "SUMMARY",     label: "Summary",         shortLabel: "Summary",  icon: FileText,     sectionKey: "SUMMARY"     as const, tooltip: "What this contract is and who the parties are" },
+  { id: "OBLIGATIONS", label: "Obligations",      shortLabel: "Duties",   icon: CheckSquare,  sectionKey: "OBLIGATIONS" as const, tooltip: "Everything you are legally required to do" },
+  { id: "POWERS",      label: "Their Powers",     shortLabel: "Powers",   icon: Zap,          sectionKey: "POWERS"      as const, tooltip: "What the other party can do to you" },
+  { id: "REDFLAGS",    label: "Red Flags",        shortLabel: "Risks",    icon: AlertTriangle,sectionKey: "REDFLAGS"    as const, tooltip: "Clauses that put you at significant risk" },
+  { id: "MISSING",     label: "Missing Clauses",  shortLabel: "Missing",  icon: Search,       sectionKey: "MISSING"     as const, tooltip: "Standard protections absent from this contract" },
+  { id: "TIMELINE",    label: "Key Dates",        shortLabel: "Dates",    icon: Calendar,     sectionKey: "TIMELINE"    as const, tooltip: "All deadlines, durations, and time limits" },
+  { id: "CONFIDENCE",  label: "Confidence",       shortLabel: "Score",    icon: Shield,       sectionKey: "CONFIDENCE"  as const, tooltip: "How reliable this analysis is" },
+  { id: "DIAGRAM",     label: "Diagram",          shortLabel: "Chart",    icon: GitGraph,     sectionKey: "DIAGRAM"     as const, tooltip: "Visual overview of the contract relationship" },
+  { id: "QA",          label: "Ask",              shortLabel: "Ask",      icon: MessageSquare,sectionKey: null,                  tooltip: "Ask any follow-up question about this contract" },
 ];
 
 const isStreaming = (status: AnalysisStatus) =>
@@ -63,33 +64,34 @@ export function ResultTabs({
       {/* Tab list */}
       <TabsPrimitive.List className="flex gap-1 overflow-x-auto pb-1 mb-4 scrollbar-hide">
         {tabs.map((tab) => (
-          <TabsPrimitive.Trigger
-            key={tab.id}
-            value={tab.id}
-            className={cn(
-              "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition-all shrink-0",
-              "text-muted-foreground hover:text-foreground",
-              "data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm",
-              "border border-transparent data-[state=active]:border-border"
-            )}
-          >
-            <tab.icon className="h-3 w-3" />
-            <span className="hidden sm:inline">{tab.label}</span>
-            <span className="sm:hidden">{tab.shortLabel}</span>
-            {tab.id === "REDFLAGS" && sections.REDFLAGS && (() => {
-              try {
-                const flags = JSON.parse(sections.REDFLAGS);
-                if (Array.isArray(flags) && flags.length > 0) {
-                  return (
-                    <span className="ml-0.5 bg-red-500 text-white rounded-full px-1.5 py-0.5 text-xs leading-none">
-                      {flags.length}
-                    </span>
-                  );
-                }
-              } catch { return null; }
-              return null;
-            })()}
-          </TabsPrimitive.Trigger>
+          <Tooltip key={tab.id} content={tab.tooltip}>
+            <TabsPrimitive.Trigger
+              value={tab.id}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition-all shrink-0",
+                "text-muted-foreground hover:text-foreground",
+                "data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm",
+                "border border-transparent data-[state=active]:border-border"
+              )}
+            >
+              <tab.icon className="h-3 w-3" />
+              <span className="hidden sm:inline">{tab.label}</span>
+              <span className="sm:hidden">{tab.shortLabel}</span>
+              {tab.id === "REDFLAGS" && sections.REDFLAGS && (() => {
+                try {
+                  const flags = JSON.parse(sections.REDFLAGS);
+                  if (Array.isArray(flags) && flags.length > 0) {
+                    return (
+                      <span className="ml-0.5 bg-red-500 text-white rounded-full px-1.5 py-0.5 text-xs leading-none">
+                        {flags.length}
+                      </span>
+                    );
+                  }
+                } catch { return null; }
+                return null;
+              })()}
+            </TabsPrimitive.Trigger>
+          </Tooltip>
         ))}
       </TabsPrimitive.List>
 

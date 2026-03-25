@@ -27,7 +27,7 @@ export function AnalysisPipeline({ status, layer1Result }: AnalysisPipelineProps
     {
       id: "streaming",
       label: "Plain Language Translation",
-      sublabel: "Generating 7 output sections",
+      sublabel: "Translating to plain language — 7 sections",
     },
     {
       id: "verifying",
@@ -37,11 +37,10 @@ export function AnalysisPipeline({ status, layer1Result }: AnalysisPipelineProps
   ];
 
   const getStepState = (stepId: string): "pending" | "active" | "done" => {
+    if (status === "done" || status === "error") return "done";
     const order = ["layer1", "streaming", "verifying"];
-    const currentIdx = order.indexOf(status === "done" ? "done" : status);
+    const currentIdx = order.indexOf(status);
     const stepIdx = order.indexOf(stepId);
-
-    if (status === "done") return "done";
     if (currentIdx === -1) return "pending";
     if (stepIdx < currentIdx) return "done";
     if (stepIdx === currentIdx) return "active";

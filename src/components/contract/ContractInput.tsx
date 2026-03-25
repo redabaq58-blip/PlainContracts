@@ -1,7 +1,8 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Upload, X, FileText } from "lucide-react";
+import { Upload, X, FileText, AlertCircle } from "lucide-react";
+import { toast } from "sonner";
 import { Textarea } from "@/components/ui/Textarea";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils/cn";
@@ -21,11 +22,11 @@ export function ContractInput({ value, onChange, disabled }: ContractInputProps)
 
   const handleFile = async (file: File) => {
     if (!file.name.toLowerCase().endsWith(".pdf")) {
-      alert("Only PDF files are supported.");
+      toast.error("Only PDF files are supported.");
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
-      alert("File must be under 10 MB.");
+      toast.error("File must be under 10 MB.");
       return;
     }
 
@@ -47,9 +48,14 @@ export function ContractInput({ value, onChange, disabled }: ContractInputProps)
       }
 
       const { text } = await res.json();
+      if (text.length > MAX_CONTRACT_CHARS) {
+        toast.warning(
+          `PDF is long — only the first ${MAX_CONTRACT_CHARS.toLocaleString()} characters will be analysed.`
+        );
+      }
       onChange(text.slice(0, MAX_CONTRACT_CHARS));
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to read PDF");
+      toast.error(err instanceof Error ? err.message : "Failed to read PDF");
       setPdfFilename(null);
     } finally {
       setPdfLoading(false);
@@ -71,6 +77,8 @@ export function ContractInput({ value, onChange, disabled }: ContractInputProps)
 
   const charCount = value.length;
   const charPercent = Math.min(100, (charCount / MAX_CONTRACT_CHARS) * 100);
+  const nearLimit = charPercent >= 90;
+  const atLimit = charCount >= MAX_CONTRACT_CHARS;
 
   return (
     <div className="space-y-2">
@@ -101,7 +109,7 @@ export function ContractInput({ value, onChange, disabled }: ContractInputProps)
             {pdfLoading ? (
               <>
                 <span className="animate-spin mr-1">⟳</span>
-                Reading PDF...
+                Reading PDF…
               </>
             ) : (
               <>
@@ -125,8 +133,9 @@ export function ContractInput({ value, onChange, disabled }: ContractInputProps)
 
       {pdfFilename && (
         <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted rounded-md px-3 py-1.5">
-          <FileText className="h-3 w-3" />
-          <span>{pdfFilename}</span>
+          <FileText className="h-3 w-3 text-primary" />
+          <span className="font-medium text-foreground">{pdfFilename}</span>
+          <span className="text-muted-foreground">— loaded successfully</span>
         </div>
       )}
 
@@ -155,13 +164,13 @@ export function ContractInput({ value, onChange, disabled }: ContractInputProps)
           disabled={disabled}
           placeholder="Paste your contract text here, or drag and drop a PDF file above...
 
-Example: Employment Agreement, Lease Agreement, NDA, Freelance Contract, Service Agreement..."
+Example: Employment Agreement, Lease Agreement, NDA, Freelance Contract, Service Agreement…"
           className="min-h-[320px] font-mono text-xs leading-relaxed"
         />
       </div>
 
       <div className="flex items-center justify-between text-xs text-muted-foreground">
-        <span>
+        <span className={cn(nearLimit && "text-amber-600 dark:text-amber-400 font-medium")}>
           {charCount.toLocaleString()} / {MAX_CONTRACT_CHARS.toLocaleString()} characters
         </span>
         {charCount > 0 && (
@@ -170,7 +179,7 @@ Example: Employment Agreement, Lease Agreement, NDA, Freelance Contract, Service
               <div
                 className={cn(
                   "h-full rounded-full transition-all",
-                  charPercent > 90 ? "bg-amber-500" : "bg-primary"
+                  nearLimit ? "bg-amber-500" : "bg-primary"
                 )}
                 style={{ width: `${charPercent}%` }}
               />
@@ -178,6 +187,16 @@ Example: Employment Agreement, Lease Agreement, NDA, Freelance Contract, Service
           </div>
         )}
       </div>
+
+      {atLimit && (
+        <div className="flex items-start gap-2 rounded-md border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
+          <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+          <span>
+            Contract truncated at {MAX_CONTRACT_CHARS.toLocaleString()} characters.
+            Clauses beyond this limit will not be analysed.
+          </span>
+        </div>
+      )}
     </div>
   );
 }

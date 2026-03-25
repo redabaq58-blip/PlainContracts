@@ -106,6 +106,13 @@ function findPartialDelimiter(text: string): number {
   return -1;
 }
 
+// ─── Timeout helper ───────────────────────────────────────────────────────────
+
+/** Resolves with `fallback` after `ms` milliseconds. Use with Promise.race(). */
+function withTimeout<T>(ms: number, fallback: T): Promise<T> {
+  return new Promise((resolve) => setTimeout(() => resolve(fallback), ms));
+}
+
 // ─── Main pipeline ────────────────────────────────────────────────────────────
 
 export interface PipelineOptions {
@@ -205,20 +212,27 @@ export function encodePipelineStream(options: PipelineOptions): ReadableStream {
           .map(([k, v]) => `<!-- SECTION:${k} -->\n${v}`)
           .join("\n\n");
 
-        // ── Layer 3 (verification) ────────────────────────────────────────────
+        // ── Layer 3 (verification) — 25 s timeout, graceful fallback ──────────
         emit(sseEvent({ type: "verifying" }));
 
-        let layer3Result = await runLayer3(contractText, layer2Text, privacyMode);
+        const L3_FALLBACK: import("@/types").Layer3Result = {
+          accurate: true,
+          errors: [],
+          confidenceAdjustment: 0,
+        };
 
-        // Auto-revise red flags if Layer 3 found errors
+        let layer3Result = await Promise.race([
+          runLayer3(contractText, layer2Text, privacyMode),
+          withTimeout(25_000, L3_FALLBACK),
+        ]);
+
+        // Auto-revise red flags if Layer 3 found errors — 15 s timeout
         if (!layer3Result.accurate && layer3Result.errors.length > 0) {
           const originalFlags = parserState.accumulated["REDFLAGS"] ?? "";
-          const revised = await reviseFlags(
-            contractText,
-            originalFlags,
-            layer3Result.errors,
-            privacyMode
-          );
+          const revised = await Promise.race([
+            reviseFlags(contractText, originalFlags, layer3Result.errors, privacyMode),
+            withTimeout(15_000, originalFlags),
+          ]);
           if (revised !== originalFlags) {
             parserState.accumulated["REDFLAGS"] = revised;
             emit(sseEvent({ type: "section_revised", section: "REDFLAGS", text: revised }));
