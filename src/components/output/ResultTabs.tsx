@@ -10,12 +10,14 @@ import {
   Calendar,
   Shield,
   MessageSquare,
+  GitGraph,
 } from "lucide-react";
 import { SectionCard } from "./SectionCard";
 import { RedFlagsPanel } from "./RedFlagsPanel";
 import { TimelinePanel } from "./TimelinePanel";
 import { ConfidencePanel } from "./ConfidencePanel";
 import { QAPanel } from "./QAPanel";
+import { DiagramPanel } from "./DiagramPanel";
 import { cn } from "@/lib/utils/cn";
 import type {
   ParsedSections,
@@ -41,6 +43,7 @@ const tabs = [
   { id: "MISSING", label: "Missing Clauses", shortLabel: "Missing", icon: Search, sectionKey: "MISSING" as const },
   { id: "TIMELINE", label: "Key Dates", shortLabel: "Dates", icon: Calendar, sectionKey: "TIMELINE" as const },
   { id: "CONFIDENCE", label: "Confidence", shortLabel: "Score", icon: Shield, sectionKey: "CONFIDENCE" as const },
+  { id: "DIAGRAM", label: "Diagram", shortLabel: "Chart", icon: GitGraph, sectionKey: "DIAGRAM" as const },
   { id: "QA", label: "Ask", shortLabel: "Ask", icon: MessageSquare, sectionKey: null },
 ];
 
@@ -146,6 +149,13 @@ export function ResultTabs({
           content={sections.CONFIDENCE}
           layer1Result={layer1Result}
           layer3Result={layer3Result}
+          streaming={isStreaming(status)}
+        />
+      </TabsPrimitive.Content>
+
+      <TabsPrimitive.Content value="DIAGRAM" className="focus:outline-none">
+        <DiagramPanel
+          content={sections.DIAGRAM}
           streaming={isStreaming(status)}
         />
       </TabsPrimitive.Content>

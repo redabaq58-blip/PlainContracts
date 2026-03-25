@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Lock, Unlock, RotateCcw } from "lucide-react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Disclaimer } from "@/components/layout/Disclaimer";
 import { ContractInput } from "@/components/contract/ContractInput";
 import { AudienceSelector } from "@/components/contract/AudienceSelector";
 import { ModeToggle } from "@/components/contract/ModeToggle";
+import { LanguageSelector } from "@/components/contract/LanguageSelector";
 import { AnalyzeButton } from "@/components/contract/AnalyzeButton";
 import { PowerScoreGauge } from "@/components/output/PowerScoreGauge";
 import { AnalysisPipeline } from "@/components/output/AnalysisPipeline";
@@ -32,6 +33,7 @@ export default function AnalyzePage() {
   const [audienceLevel, setAudienceLevel] = useState<AudienceLevel>("INFORMED");
   const [mode, setMode] = useState<AnalysisMode>("SIGNER");
   const [privacyMode, setPrivacyMode] = useState(false);
+  const [language, setLanguage] = useState("English");
 
   const isRunning =
     status === "layer1" || status === "streaming" || status === "verifying";
@@ -39,8 +41,8 @@ export default function AnalyzePage() {
 
   const handleAnalyze = useCallback(() => {
     if (!contractText.trim()) return;
-    analyze({ contractText, audienceLevel, mode, privacyMode });
-  }, [contractText, audienceLevel, mode, privacyMode, analyze]);
+    analyze({ contractText, audienceLevel, mode, privacyMode, language });
+  }, [contractText, audienceLevel, mode, privacyMode, language, analyze]);
 
   const handleLevelChange = useCallback(
     (level: AudienceLevel) => {
@@ -52,11 +54,12 @@ export default function AnalyzePage() {
           audienceLevel: level,
           mode,
           privacyMode,
+          language,
           layer1Cache: layer1Result,
         });
       }
     },
-    [status, layer1Result, contractText, mode, privacyMode, analyze]
+    [status, layer1Result, contractText, mode, privacyMode, language, analyze]
   );
 
   const handleModeChange = useCallback(
@@ -64,16 +67,30 @@ export default function AnalyzePage() {
       setMode(newMode);
       // Re-run if analysis already exists (mode change always re-runs full pipeline)
       if (status === "done" && contractText.trim()) {
-        analyze({ contractText, audienceLevel, mode: newMode, privacyMode });
+        analyze({ contractText, audienceLevel, mode: newMode, privacyMode, language });
       }
     },
-    [status, contractText, audienceLevel, privacyMode, analyze]
+    [status, contractText, audienceLevel, privacyMode, language, analyze]
   );
 
   const handleReset = () => {
     reset();
     setContractText("");
   };
+
+  // ⌘/Ctrl + Enter keyboard shortcut
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+        e.preventDefault();
+        if (contractText.trim() && !isRunning) {
+          analyze({ contractText, audienceLevel, mode, privacyMode, language });
+        }
+      }
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [contractText, audienceLevel, mode, privacyMode, language, isRunning, analyze]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -109,6 +126,11 @@ export default function AnalyzePage() {
               <AudienceSelector
                 level={audienceLevel}
                 onLevelChange={handleLevelChange}
+                disabled={isRunning}
+              />
+              <LanguageSelector
+                language={language}
+                onLanguageChange={setLanguage}
                 disabled={isRunning}
               />
               <Tooltip

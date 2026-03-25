@@ -39,6 +39,7 @@ export const SECTION_LABELS: Record<SectionKey, string> = {
   MISSING: "Missing Clauses",
   CONFIDENCE: "Confidence",
   TIMELINE: "Key Dates",
+  DIAGRAM: "Diagram",
 };
 
 export const SECTION_ORDER: SectionKey[] = [
@@ -49,6 +50,7 @@ export const SECTION_ORDER: SectionKey[] = [
   "MISSING",
   "TIMELINE",
   "CONFIDENCE",
+  "DIAGRAM",
 ];
 
 export const MAX_CONTRACT_CHARS = 100_000;

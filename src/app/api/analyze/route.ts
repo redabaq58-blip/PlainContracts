@@ -18,6 +18,7 @@ const AnalyzeSchema = z.object({
   mode: z.enum(["SIGNER", "SENDER"]),
   privacyMode: z.boolean().optional().default(false),
   layer1Cache: Layer1CacheSchema.optional(),
+  language: z.string().optional().default("English"),
 });
 
 export async function POST(req: NextRequest) {
@@ -36,7 +37,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { contractText, audienceLevel, mode, privacyMode, layer1Cache } =
+  const { contractText, audienceLevel, mode, privacyMode, layer1Cache, language } =
     parsed.data;
 
   const stream = encodePipelineStream({
@@ -45,6 +46,7 @@ export async function POST(req: NextRequest) {
     mode,
     privacyMode,
     layer1Cache,
+    language,
   });
 
   return new Response(stream, {

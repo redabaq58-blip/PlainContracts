@@ -26,6 +26,7 @@ interface AnalyzeOptions {
   mode: AnalysisMode;
   privacyMode?: boolean;
   layer1Cache?: Layer1Result;
+  language?: string;
 }
 
 export function useAnalyze() {
@@ -56,6 +57,7 @@ export function useAnalyze() {
           mode: options.mode,
           privacyMode: options.privacyMode ?? false,
           layer1Cache: options.layer1Cache,
+          language: options.language ?? "English",
         }),
         signal: controller.signal,
       });

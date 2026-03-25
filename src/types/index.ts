@@ -56,7 +56,8 @@ export type SectionKey =
   | "REDFLAGS"
   | "MISSING"
   | "CONFIDENCE"
-  | "TIMELINE";
+  | "TIMELINE"
+  | "DIAGRAM";
 
 export type ParsedSections = Partial<Record<SectionKey, string>>;
 

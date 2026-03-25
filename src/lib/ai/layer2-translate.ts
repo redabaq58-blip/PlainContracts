@@ -12,7 +12,8 @@ const AUDIENCE_INSTRUCTIONS: Record<AudienceLevel, string> = {
 export function buildLayer2SystemPrompt(
   audienceLevel: AudienceLevel,
   mode: AnalysisMode,
-  layer1: Layer1Result
+  layer1: Layer1Result,
+  language = "English"
 ): string {
   const isSignerMode = mode === "SIGNER";
 
@@ -43,7 +44,11 @@ export function buildLayer2SystemPrompt(
   "negotiationEmail": "A complete, professional email paragraph ready to copy-paste. Address it as 'I would like to request...' and reference the specific clause."
 }`;
 
-  return `You are a plain-language contract translator. You translate contracts into clear, accurate plain language. You are NOT providing legal advice. You are translating what is already written in the contract.
+  const languageInstruction = language !== "English"
+    ? `IMPORTANT: Respond entirely in ${language}. All prose, bullet points, explanations, labels, and sentences must be written in ${language}. JSON field names (clauseRef, severity, explanation, etc.), section delimiter comments (<!-- SECTION:... -->), and Mermaid diagram syntax must remain in English.\n\n`
+    : "";
+
+  return `${languageInstruction}You are a plain-language contract translator. You translate contracts into clear, accurate plain language. You are NOT providing legal advice. You are translating what is already written in the contract.
 
 ${perspective}
 
@@ -93,7 +98,10 @@ JSON array of all time-based information in the contract. Each object:
 Include: notice periods, probation periods, payment terms, renewal/auto-renewal dates, non-compete durations, IP ownership periods, warranty periods, any deadlines.
 If no time-based information found: output []
 
-Output all seven sections in order. Do not skip any section. Do not add commentary outside the sections.`;
+<!-- SECTION:DIAGRAM -->
+A Mermaid flowchart (flowchart LR) visualising the contract relationship. Show: the two parties as named nodes, key obligations/exchanges as labelled directed edges between them, major powers or termination rights, and 1–2 key time-based obligations if present. Use concise edge labels (max 6 words). Output ONLY raw Mermaid syntax — no backtick fences, no explanation, just the diagram code starting with "flowchart LR".
+
+Output all eight sections in order. Do not skip any section. Do not add commentary outside the sections.`;
 }
 
 export function buildLayer2UserPrompt(

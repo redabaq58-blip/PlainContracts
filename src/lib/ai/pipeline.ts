@@ -114,6 +114,7 @@ export interface PipelineOptions {
   mode: AnalysisMode;
   privacyMode?: boolean;
   layer1Cache?: Layer1Result;
+  language?: string;
 }
 
 /**
@@ -127,6 +128,7 @@ export function encodePipelineStream(options: PipelineOptions): ReadableStream {
     mode,
     privacyMode = false,
     layer1Cache,
+    language = "English",
   } = options;
 
   return new ReadableStream({
@@ -148,7 +150,7 @@ export function encodePipelineStream(options: PipelineOptions): ReadableStream {
 
         // ── Layer 2 (streaming) ───────────────────────────────────────────────
         const client = getAnthropicClient(privacyMode);
-        const systemPrompt = buildLayer2SystemPrompt(audienceLevel, mode, layer1Result);
+        const systemPrompt = buildLayer2SystemPrompt(audienceLevel, mode, layer1Result, language);
         const userPrompt = buildLayer2UserPrompt(contractText, mode);
 
         const parserState: StreamParserState = {
@@ -159,7 +161,7 @@ export function encodePipelineStream(options: PipelineOptions): ReadableStream {
 
         const stream = client.messages.stream({
           model: "claude-sonnet-4-6",
-          max_tokens: 4096,
+          max_tokens: 8192,
           system: systemPrompt,
           messages: [{ role: "user", content: userPrompt }],
         });
