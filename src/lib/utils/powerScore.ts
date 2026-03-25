@@ -1,15 +1,24 @@
 import type { RedFlag } from "@/types";
 
 const SEVERITY_WEIGHTS: Record<string, number> = {
-  High: 20,
-  Medium: 10,
-  Low: 5,
+  High: 15,
+  Medium: 7,
+  Low: 3,
+  // Handle lowercase variants from LLM output
+  high: 15,
+  medium: 7,
+  low: 3,
 };
+
+// Maximum total deduction from red flags and missing clauses
+const MAX_FLAG_DEDUCTION = 55;
+const MAX_MISSING_DEDUCTION = 20;
 
 /**
  * Calculates a contract fairness score (0-100).
  * 100 = perfectly balanced. 0 = completely one-sided against you.
- * Deducts points for each red flag weighted by severity.
+ * Deducts points for each red flag weighted by severity,
+ * with caps to prevent the score from always hitting zero.
  */
 export function calculatePowerScore(
   redFlags: RedFlag[],
@@ -17,22 +26,26 @@ export function calculatePowerScore(
 ): number {
   let score = 100;
 
+  // Deduct for red flags, capped
+  let flagDeduction = 0;
   for (const flag of redFlags) {
-    score -= SEVERITY_WEIGHTS[flag.severity] ?? 5;
+    flagDeduction += SEVERITY_WEIGHTS[flag.severity] ?? 3;
   }
+  score -= Math.min(flagDeduction, MAX_FLAG_DEDUCTION);
 
-  // Deduct for missing clauses (rough heuristic: count bullet points)
+  // Deduct for missing clauses (rough heuristic: count bullet points), capped
   const missingCount = (missingClausesText.match(/^[-•*]/gm) ?? []).length;
-  score -= missingCount * 3;
+  score -= Math.min(missingCount * 2, MAX_MISSING_DEDUCTION);
 
-  return Math.max(0, Math.min(100, Math.round(score)));
+  return Math.max(5, Math.min(100, Math.round(score)));
 }
 
 export function getPowerScoreLabel(score: number): string {
   if (score >= 75) return "Well-balanced contract";
   if (score >= 55) return "Moderately balanced — some concerns";
-  if (score >= 35) return "One-sided — review carefully before signing";
-  return "Heavily one-sided — significant risk";
+  if (score >= 35) return "One-sided — review carefully";
+  if (score >= 20) return "Heavily one-sided — negotiate before signing";
+  return "Very one-sided — seek legal advice before signing";
 }
 
 export function getPowerScoreColor(score: number): string {

@@ -90,7 +90,7 @@ If no red flags: output []
 Bullet list of standard clauses for a ${layer1.contractType} contract that are ABSENT from this document. For each missing clause: name it and in one sentence explain why its absence matters. If nothing material is missing, write: "No significant clauses appear to be missing."
 
 <!-- SECTION:CONFIDENCE -->
-A number from 0 to 100, followed by a period and one sentence. Example: "78. This contract is clearly written and our translation is high confidence." Another example: "41. This contract contains several ambiguous terms — verify key clauses with a qualified attorney."
+A number from 0 to 100, followed by a period and one sentence explaining the confidence of the analysis. Focus on the quality and clarity of the contract language. Do NOT mention truncation, character counts, or technical processing details — the reader should not see implementation details. Example: "78. This contract is clearly written and our translation is high confidence." Another example: "41. This contract contains several ambiguous terms — verify key clauses with a qualified attorney."
 
 <!-- SECTION:TIMELINE -->
 JSON array of all time-based information in the contract. Each object:
@@ -112,7 +112,7 @@ export function buildLayer2UserPrompt(
   const truncated = contractText.slice(0, 8000);
   const truncationNote =
     contractText.length > 8000
-      ? `\n\n[Note: Contract truncated to 8000 characters for analysis. Full length: ${contractText.length} characters.]`
+      ? `\n\n[INTERNAL NOTE — do NOT mention this to the user: The contract was truncated for processing. Analyse what is provided and note any sections that appear incomplete in your CONFIDENCE score, but do NOT reference truncation, character counts, or processing limits in your output.]`
       : "";
 
   return `Please analyse this contract and provide your translation in the required format (seven sections: SUMMARY, OBLIGATIONS, POWERS, REDFLAGS, MISSING, CONFIDENCE, TIMELINE).
