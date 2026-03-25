@@ -106,7 +106,12 @@ export default function GeneratePage() {
           keyTerms,
           language,
           contractLength,
-          companyWebsite: companyWebsite.trim() || undefined,
+          companyWebsite: (() => {
+            const url = companyWebsite.trim();
+            if (!url) return undefined;
+            if (/^https?:\/\//i.test(url)) return url;
+            return `https://${url}`;
+          })(),
           privacyMode,
         }),
         signal: controller.signal,
@@ -203,6 +208,12 @@ export default function GeneratePage() {
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
   }, [canGenerate, isGenerating, generate]);
+
+  // ── Abort cleanup on unmount ────────────────────────────────────────────
+
+  useEffect(() => {
+    return () => { abortRef.current?.abort(); };
+  }, []);
 
   // ── Auto-scroll during generation ────────────────────────────────────────
 
