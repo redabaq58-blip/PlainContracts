@@ -126,7 +126,13 @@ const whoItsFor = [
     icon: Building2,
     title: "Small Businesses",
     description:
-      "Startups, agencies, and growing teams that sign vendor, client, and partnership contracts without in-house counsel.",
+      "Startups, agencies, and growing teams that send and sign vendor, client, and partnership contracts without in-house counsel.",
+  },
+  {
+    icon: PenTool,
+    title: "Contract Drafters",
+    description:
+      "Generate jurisdiction-aware NDAs, service agreements, employment offers, and more — then verify them with an adversarial loophole check before sending.",
   },
   {
     icon: Landmark,
@@ -135,16 +141,16 @@ const whoItsFor = [
       "First-pass review in seconds. Flag structural risks across high volumes. Generate balanced counter-proposals instantly.",
   },
   {
+    icon: ShieldCheck,
+    title: "HR & Procurement Teams",
+    description:
+      "Draft employment templates and vendor MSAs. Review incoming agreements at scale. Sender Mode surfaces your exposure.",
+  },
+  {
     icon: GraduationCap,
     title: "Students & Researchers",
     description:
       "Internship contracts, research agreements, publication rights. Understand what standard terms look like.",
-  },
-  {
-    icon: ShieldCheck,
-    title: "HR & Procurement Teams",
-    description:
-      "Review employment templates, vendor MSAs, and service agreements at scale. Sender Mode surfaces your exposure.",
   },
   {
     icon: Handshake,
@@ -360,7 +366,7 @@ export default function LandingPage() {
           Multi-agent extraction &middot; 5 structural tests &middot; Zero data retention
         </div>
 
-        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-foreground mb-6 leading-tight">
+        <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-foreground mb-6 leading-tight">
           Your contract,{" "}
           <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-violet-600 dark:from-blue-400 dark:to-violet-400">
             reviewed like a lawyer
@@ -376,8 +382,8 @@ export default function LandingPage() {
         </p>
 
         <p className="text-sm text-muted-foreground mb-10 max-w-xl mx-auto">
-          Built for anyone who signs contracts without in-house counsel.
-          Freelancers, founders, job seekers, HR teams, tenants, and legal professionals.
+          Built for anyone who signs <em>or</em> drafts contracts without in-house counsel.
+          Freelancers, founders, job seekers, HR teams, tenants, businesses, and legal professionals.
         </p>
 
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
@@ -548,10 +554,10 @@ export default function LandingPage() {
       {/* Who It's For */}
       <section className="container max-w-5xl mx-auto px-4 py-20">
         <h2 className="text-2xl font-bold text-center mb-2">
-          Built for people who sign contracts
+          Built for people who sign — and draft — contracts
         </h2>
         <p className="text-center text-muted-foreground mb-12 text-sm">
-          Whether you are an individual or a team, PlainContracts levels the playing field.
+          Whether you are receiving a contract or sending one, PlainContracts gives you the analysis and the drafting tools to act from a position of clarity.
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {whoItsFor.map((item) => (
