@@ -106,6 +106,30 @@ function findPartialDelimiter(text: string): number {
   return -1;
 }
 
+// ─── Error sanitiser ─────────────────────────────────────────────────────────
+
+function sanitizeErrorMessage(err: unknown): string {
+  if (!(err instanceof Error)) return "Something went wrong. Please try again.";
+
+  const msg = err.message;
+
+  if (msg.includes("401") || msg.includes("authentication"))
+    return "API authentication failed. Please contact support.";
+  if (msg.includes("429") || msg.includes("rate_limit"))
+    return "Too many requests. Please wait a moment and try again.";
+  if (msg.includes("529") || msg.includes("overloaded"))
+    return "The AI service is temporarily busy. Please try again in a minute.";
+  if (msg.includes("400"))
+    return "The analysis request was rejected. Please try again.";
+  if (msg.includes("fetch") || msg.includes("network") || msg.includes("ECONNREFUSED"))
+    return "Network error. Please check your connection and try again.";
+
+  // If the message is short and clean, pass it through
+  if (msg.length < 120 && !msg.includes("{")) return msg;
+
+  return "Something went wrong during analysis. Please try again.";
+}
+
 // ─── Timeout helper ───────────────────────────────────────────────────────────
 
 /** Resolves with `fallback` after `ms` milliseconds. Use with Promise.race(). */
@@ -253,7 +277,7 @@ export function encodePipelineStream(options: PipelineOptions): ReadableStream {
         emit(
           sseEvent({
             type: "error",
-            message: err instanceof Error ? err.message : "Unknown error",
+            message: sanitizeErrorMessage(err),
           })
         );
         emit(sseDone());

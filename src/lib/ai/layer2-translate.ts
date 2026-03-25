@@ -30,8 +30,8 @@ export function buildLayer2SystemPrompt(
 {
   "clauseRef": "Section or clause reference (e.g. Section 7.2, Clause 3, paragraph 4)",
   "severity": "High" | "Medium" | "Low",
-  "explanation": "One sentence in plain language explaining why this clause is concerning",
-  "negotiationTip": "One sentence — what to ask the other party to change",
+  "explanation": "One sentence explaining what this clause means in practice and its concrete impact on ${primaryParty}",
+  "negotiationTip": "One sentence — a balanced, professional suggestion for what to modify (fair to both parties, not adversarial)",
   "negotiationEmail": "A complete, professional email paragraph written in ${language}, ready to copy-paste. Address it as 'I would like to request...' and reference the specific clause.",
   "clauseRewrite": "A complete alternative clause written in plain, balanced language that protects both parties fairly."
 }`
@@ -39,8 +39,8 @@ export function buildLayer2SystemPrompt(
 {
   "clauseRef": "Section or clause reference (e.g. Section 7.2, Clause 3, paragraph 4)",
   "severity": "High" | "Medium" | "Low",
-  "explanation": "One sentence in plain language explaining why this clause is concerning",
-  "negotiationTip": "One sentence — what to ask the other party to change",
+  "explanation": "One sentence explaining what this clause means in practice and its concrete impact on ${primaryParty}",
+  "negotiationTip": "One sentence — a balanced, professional suggestion for what to modify (fair to both parties, not adversarial)",
   "negotiationEmail": "A complete, professional email paragraph written in ${language}, ready to copy-paste. Address it as 'I would like to request...' and reference the specific clause."
 }`;
 
@@ -49,6 +49,8 @@ export function buildLayer2SystemPrompt(
     : "";
 
   return `${languageInstruction}You are a plain-language contract translator. You translate contracts into clear, accurate plain language. You are NOT providing legal advice. You are translating what is already written in the contract.
+
+Be concise and direct. Every sentence must earn its place — cut filler words, avoid restating the obvious, and lead with the most important information first.
 
 ${perspective}
 
@@ -69,13 +71,15 @@ SEVERITY GUIDE for Red Flags:
 OUTPUT FORMAT — You MUST output exactly seven sections using these exact delimiters in this exact order. Do not add any text before the first delimiter.
 
 <!-- SECTION:SUMMARY -->
-Three plain sentences: (1) what this contract is, (2) who the parties are and what the core exchange is, (3) how long it lasts or when it ends.
+Four plain sentences: (1) what this contract is, (2) who the parties are and what the core exchange is, (3) how long it lasts or when it ends, (4) a "Bottom line:" verdict — one direct sentence starting with "**Bottom line:**" that tells ${primaryParty} whether this deal is fair, heavily one-sided, or standard for this type of ${layer1.contractType} contract.
 
 <!-- SECTION:OBLIGATIONS -->
-Bullet list. Each bullet = one specific thing ${primaryParty} must do, pay, deliver, or avoid. Start each bullet with an action verb. Be specific. Only obligations — not rights.
+Bullet list of ${primaryParty}'s obligations. Each bullet = one specific thing ${primaryParty} must do, pay, deliver, or avoid. Start each bullet with an action verb. Be specific.
+After all bullets, add a line: "**In return, ${otherParty} must:**" followed by 2-4 bullets summarising the other party's key obligations under this contract. This gives context on whether the exchange is balanced.
 
 <!-- SECTION:POWERS -->
-Bullet list. What ${otherParty} CAN do under this contract. Include: termination rights, penalty clauses, IP/work ownership claims, non-compete enforcement, audit rights, amendment rights, unilateral change rights, clawback provisions. These are the clauses people miss until it is too late.
+Bullet list of what ${otherParty} CAN do under this contract. Include: termination rights, penalty clauses, IP/work ownership claims, non-compete enforcement, audit rights, amendment rights, unilateral change rights, clawback provisions. These are the clauses people miss until it is too late.
+Then add: "**Your protections:**" followed by 2-4 bullets listing what protections or rights ${primaryParty} has under this contract (e.g., termination rights, notice periods, dispute resolution, limitation of liability, cure periods). If none exist, write: "No explicit protections found for ${primaryParty} — this is a significant gap."
 
 <!-- SECTION:REDFLAGS -->
 ${redflagsFormat}

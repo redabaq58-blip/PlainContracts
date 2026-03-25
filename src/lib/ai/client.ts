@@ -15,8 +15,10 @@ let _defaultClient: Anthropic | null = null;
 
 export function getAnthropicClient(privacyMode = false): Anthropic {
   if (privacyMode) {
-    // Privacy mode: fresh client with no-training header, never cached
-    return createClient({ "anthropic-beta": "no-training-2025-08-01" });
+    // Privacy mode: Anthropic no longer trains on API data by default,
+    // so no special header is needed. Fresh uncached client preserved
+    // for future privacy-related headers.
+    return createClient();
   }
   if (!_defaultClient) {
     _defaultClient = createClient();

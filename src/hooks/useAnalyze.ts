@@ -63,8 +63,11 @@ export function useAnalyze() {
       });
 
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error ?? `HTTP ${res.status}`);
+        const err = await res.json().catch(() => ({}));
+        const msg = typeof err.error === "string" && err.error.length < 120 && !err.error.includes("{")
+          ? err.error
+          : "Analysis failed. Please try again.";
+        throw new Error(msg);
       }
 
       const reader = res.body?.getReader();
