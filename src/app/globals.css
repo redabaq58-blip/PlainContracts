@@ -113,3 +113,35 @@
 .prose :where(ul > li):not(:where([class~="not-prose"] *))::marker {
   color: hsl(var(--muted-foreground));
 }
+
+/* ── Print / PDF export ───────────────────────────────────────────────────── */
+@media print {
+  /* Hide everything except the report */
+  body > * { display: none !important; }
+  body > div { display: block !important; }
+
+  nav,
+  [data-print-hide],
+  .print\:hidden {
+    display: none !important;
+  }
+
+  /* Show report document full-width */
+  #report-document {
+    display: block !important;
+    width: 100%;
+    max-width: 100%;
+    padding: 0;
+  }
+
+  /* Force light background for readability */
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Page breaks */
+  section {
+    break-inside: avoid;
+  }
+}

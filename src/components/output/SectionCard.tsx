@@ -19,7 +19,7 @@ interface SectionCardProps {
  * - Lines starting with a digit → numbered item
  * - Everything else → paragraph
  */
-function FormattedContent({ text }: { text: string }) {
+export function FormattedContent({ text }: { text: string }) {
   const lines = text.split("\n").map((l) => l.trimEnd());
 
   const elements: React.ReactNode[] = [];

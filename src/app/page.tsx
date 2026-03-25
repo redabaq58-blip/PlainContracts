@@ -11,10 +11,30 @@ import {
   User,
   Building2,
   Mail,
+  Download,
+  GitGraph,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 
 const features = [
+  {
+    icon: GitGraph,
+    title: "Unified Report — One Clean Document",
+    description:
+      "All analysis in a single scrollable report: visual diagram, summary, obligations, red flags, key dates. No tabs to click through.",
+    color: "text-violet-500",
+    bg: "bg-violet-50 dark:bg-violet-950/30",
+    border: "border-violet-200 dark:border-violet-900",
+  },
+  {
+    icon: Download,
+    title: "Export as PDF or Copy",
+    description:
+      'One click exports the full report as a PDF you can save or share. Or copy the entire analysis as plain text — ready to paste anywhere.',
+    color: "text-blue-500",
+    bg: "bg-blue-50 dark:bg-blue-950/30",
+    border: "border-blue-200 dark:border-blue-900",
+  },
   {
     icon: AlertTriangle,
     title: "Red Flags + Negotiation Emails",
@@ -38,9 +58,9 @@ const features = [
     title: "Key Dates Timeline",
     description:
       "Every date, duration, and deadline extracted and visualised. Notice periods. Non-compete durations. Payment terms. At a glance.",
-    color: "text-blue-500",
-    bg: "bg-blue-50 dark:bg-blue-950/30",
-    border: "border-blue-200 dark:border-blue-900",
+    color: "text-sky-500",
+    bg: "bg-sky-50 dark:bg-sky-950/30",
+    border: "border-sky-200 dark:border-sky-900",
   },
   {
     icon: User,
@@ -73,7 +93,7 @@ const features = [
     icon: Shield,
     title: "Privacy Mode",
     description:
-      "Toggle on to add Anthropic's no-training header. Your contract text is never stored, logged, or used for training. Ever.",
+      "Toggle on to activate secure no-training mode. Your contract text is never stored, logged, or used for training. Ever.",
     color: "text-slate-500",
     bg: "bg-slate-50 dark:bg-slate-950/30",
     border: "border-slate-200 dark:border-slate-900",
@@ -134,7 +154,7 @@ export default function LandingPage() {
       <section className="container max-w-4xl mx-auto px-4 py-20 text-center">
         <div className="inline-flex items-center gap-1.5 text-xs font-medium bg-muted text-muted-foreground px-3 py-1 rounded-full mb-6">
           <span className="w-1.5 h-1.5 bg-green-500 rounded-full" />
-          Powered by Claude AI · Free for everyone
+          Powered by secure AI systems · Free for everyone
         </div>
 
         <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-foreground mb-6 leading-tight">
@@ -147,8 +167,8 @@ export default function LandingPage() {
         </h1>
 
         <p className="text-lg text-muted-foreground mb-4 max-w-2xl mx-auto">
-          7 plain-language outputs in 15 seconds. Red flags. Obligations.
-          Their powers over you. Key dates. Negotiation emails ready to send.
+          One clean report in 15 seconds. Visual diagram. Red flags. Obligations.
+          Their powers. Key dates. Negotiation emails. Export as PDF — no tabs to click.
         </p>
 
         <p className="text-sm text-muted-foreground mb-10">
@@ -219,17 +239,17 @@ export default function LandingPage() {
           ))}
         </div>
         <p className="text-xs text-center text-muted-foreground mt-4">
-          Switching level re-runs only Layer 2 — Layer 1 detection is cached for speed.
+          Switching level regenerates only the translation — contract detection is cached for speed.
         </p>
       </section>
 
       {/* Features */}
       <section className="container max-w-5xl mx-auto px-4 pb-20">
         <h2 className="text-2xl font-bold text-center mb-3">
-          7 outputs no competitor produces for consumers
+          Everything in one place. Nothing hidden behind tabs.
         </h2>
         <p className="text-center text-muted-foreground mb-10 text-sm">
-          Powered by a 3-layer Claude AI pipeline: intelligence → translation →
+          Powered by a 3-layer secure AI pipeline: intelligence → translation →
           adversarial verification.
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

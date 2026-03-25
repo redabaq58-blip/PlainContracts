@@ -11,7 +11,7 @@ import { LanguageSelector } from "@/components/contract/LanguageSelector";
 import { AnalyzeButton } from "@/components/contract/AnalyzeButton";
 import { PowerScoreGauge } from "@/components/output/PowerScoreGauge";
 import { AnalysisPipeline } from "@/components/output/AnalysisPipeline";
-import { ResultTabs } from "@/components/output/ResultTabs";
+import { ResultDocument } from "@/components/output/ResultDocument";
 import { Button } from "@/components/ui/Button";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { useAnalyze } from "@/hooks/useAnalyze";
@@ -240,8 +240,8 @@ export default function AnalyzePage() {
                   </div>
                 )}
 
-                {/* Output tabs */}
-                <ResultTabs
+                {/* Unified output document */}
+                <ResultDocument
                   sections={sections}
                   status={status}
                   layer1Result={layer1Result}
