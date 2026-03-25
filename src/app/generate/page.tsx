@@ -11,12 +11,14 @@ import {
   Globe,
   RotateCcw,
   Link2,
+  ShieldCheck,
 } from "lucide-react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Disclaimer } from "@/components/layout/Disclaimer";
 import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Textarea";
 import { cn } from "@/lib/utils/cn";
+import { exportContractPDF } from "@/lib/utils/exportPdf";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -69,6 +71,7 @@ export default function GeneratePage() {
   const [generatedText, setGeneratedText] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [hostileStatus, setHostileStatus] = useState<"idle" | "checking" | "fixed" | "clean">("idle");
 
   const abortRef = useRef<AbortController | null>(null);
   const outputRef = useRef<HTMLDivElement>(null);
@@ -93,6 +96,7 @@ export default function GeneratePage() {
     setStatus("generating");
     setGeneratedText("");
     setError(null);
+    setHostileStatus("idle");
 
     try {
       const res = await fetch("/api/generate", {
@@ -149,6 +153,10 @@ export default function GeneratePage() {
 
               if (event.type === "delta") {
                 setGeneratedText((prev) => prev + event.text);
+              } else if (event.type === "contract_reset") {
+                setGeneratedText(event.text ?? "");
+              } else if (event.type === "hostile_review") {
+                setHostileStatus(event.status as "checking" | "fixed" | "clean");
               } else if (event.type === "error") {
                 throw new Error(event.message ?? "Generation failed");
               }
@@ -179,11 +187,11 @@ export default function GeneratePage() {
     setTimeout(() => setCopied(false), 2000);
   }, [generatedText]);
 
-  // ── Export PDF (print) ───────────────────────────────────────────────────
+  // ── Export PDF ───────────────────────────────────────────────────────────
 
   const handleExportPDF = useCallback(() => {
-    window.print();
-  }, []);
+    exportContractPDF(generatedText, contractType, partyA, partyB);
+  }, [generatedText, contractType, partyA, partyB]);
 
   // ── Reset ────────────────────────────────────────────────────────────────
 
@@ -192,6 +200,7 @@ export default function GeneratePage() {
     setStatus("idle");
     setGeneratedText("");
     setError(null);
+    setHostileStatus("idle");
   };
 
   // ── Keyboard shortcut ────────────────────────────────────────────────────
@@ -514,6 +523,27 @@ export default function GeneratePage() {
             {/* Generating or done */}
             {(status === "generating" || status === "done") && (
               <div className="space-y-3">
+                {/* Hostile review status */}
+                {(hostileStatus === "checking" || hostileStatus === "fixed" || hostileStatus === "clean") && (
+                  <div className={cn(
+                    "flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-medium",
+                    hostileStatus === "checking"
+                      ? "border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400"
+                      : hostileStatus === "fixed"
+                      ? "border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400"
+                      : "border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400"
+                  )}>
+                    {hostileStatus === "checking" ? (
+                      <Loader2 className="h-3 w-3 animate-spin shrink-0" />
+                    ) : (
+                      <ShieldCheck className="h-3 w-3 shrink-0" />
+                    )}
+                    {hostileStatus === "checking" && "Running adversarial stress test…"}
+                    {hostileStatus === "fixed" && "1 vulnerability patched — contract hardened"}
+                    {hostileStatus === "clean" && "Adversarial review passed — no exploitable loopholes found"}
+                  </div>
+                )}
+
                 {/* Action bar */}
                 {status === "done" && (
                   <div className="flex items-center gap-2 justify-end print:hidden">
