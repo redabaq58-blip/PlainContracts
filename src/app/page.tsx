@@ -359,19 +359,6 @@ export default function LandingPage() {
         </div>
       </nav>
 
-      {/* Disclaimer banner — top (mirrors footer exactly) */}
-      <div className="border-b border-border">
-        <div className="container max-w-6xl mx-auto px-4 py-6 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-muted-foreground">
-          <div className="flex items-center gap-2">
-            <FileText className="h-3.5 w-3.5" />
-            <span>PlainContracts</span>
-          </div>
-          <p>
-            Contract analysis and drafting tool. Not legal advice. Consult a qualified attorney before signing.
-          </p>
-        </div>
-      </div>
-
       {/* Hero */}
       <section className="container max-w-4xl mx-auto px-4 pt-20 pb-16 text-center">
         <div className="inline-flex items-center gap-1.5 text-xs font-medium bg-muted text-muted-foreground px-3 py-1 rounded-full mb-6">
