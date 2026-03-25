@@ -32,7 +32,7 @@ export function buildLayer2SystemPrompt(
   "severity": "High" | "Medium" | "Low",
   "explanation": "One sentence in plain language explaining why this clause is concerning",
   "negotiationTip": "One sentence — what to ask the other party to change",
-  "negotiationEmail": "A complete, professional email paragraph ready to copy-paste. Address it as 'I would like to request...' and reference the specific clause.",
+  "negotiationEmail": "A complete, professional email paragraph written in ${language}, ready to copy-paste. Address it as 'I would like to request...' and reference the specific clause.",
   "clauseRewrite": "A complete alternative clause written in plain, balanced language that protects both parties fairly."
 }`
       : `JSON array. Each object must have exactly these fields:
@@ -41,11 +41,11 @@ export function buildLayer2SystemPrompt(
   "severity": "High" | "Medium" | "Low",
   "explanation": "One sentence in plain language explaining why this clause is concerning",
   "negotiationTip": "One sentence — what to ask the other party to change",
-  "negotiationEmail": "A complete, professional email paragraph ready to copy-paste. Address it as 'I would like to request...' and reference the specific clause."
+  "negotiationEmail": "A complete, professional email paragraph written in ${language}, ready to copy-paste. Address it as 'I would like to request...' and reference the specific clause."
 }`;
 
   const languageInstruction = language !== "English"
-    ? `IMPORTANT: Respond entirely in ${language}. All prose, bullet points, explanations, labels, and sentences must be written in ${language}. JSON field names (clauseRef, severity, explanation, etc.), section delimiter comments (<!-- SECTION:... -->), and Mermaid diagram syntax must remain in English.\n\n`
+    ? `IMPORTANT: Respond entirely in ${language}. All prose, bullet points, explanations, labels, negotiation emails, and sentences must be written in ${language}. Only JSON field names (clauseRef, severity, explanation, etc.) and section delimiter comments (<!-- SECTION:... -->) must remain in English.\n\n`
     : "";
 
   return `${languageInstruction}You are a plain-language contract translator. You translate contracts into clear, accurate plain language. You are NOT providing legal advice. You are translating what is already written in the contract.
@@ -98,10 +98,7 @@ JSON array of all time-based information in the contract. Each object:
 Include: notice periods, probation periods, payment terms, renewal/auto-renewal dates, non-compete durations, IP ownership periods, warranty periods, any deadlines.
 If no time-based information found: output []
 
-<!-- SECTION:DIAGRAM -->
-A Mermaid flowchart (flowchart LR) visualising the contract relationship. Show: the two parties as named nodes, key obligations/exchanges as labelled directed edges between them, major powers or termination rights, and 1–2 key time-based obligations if present. Use concise edge labels (max 6 words). Output ONLY raw Mermaid syntax — no backtick fences, no explanation, just the diagram code starting with "flowchart LR".
-
-Output all eight sections in order. Do not skip any section. Do not add commentary outside the sections.`;
+Output all seven sections in order. Do not skip any section. Do not add commentary outside the sections.`;
 }
 
 export function buildLayer2UserPrompt(
@@ -114,7 +111,7 @@ export function buildLayer2UserPrompt(
       ? `\n\n[Note: Contract truncated to 8000 characters for analysis. Full length: ${contractText.length} characters.]`
       : "";
 
-  return `Please analyse this contract and provide your translation in the required seven-section format.
+  return `Please analyse this contract and provide your translation in the required format (seven sections: SUMMARY, OBLIGATIONS, POWERS, REDFLAGS, MISSING, CONFIDENCE, TIMELINE).
 
 Analyse from the ${mode === "SIGNER" ? "SIGNER's perspective" : "SENDER's perspective"} as instructed in your system prompt.
 

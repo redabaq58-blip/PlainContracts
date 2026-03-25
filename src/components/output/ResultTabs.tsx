@@ -155,8 +155,9 @@ export function ResultTabs({
 
       <TabsPrimitive.Content value="DIAGRAM" className="focus:outline-none">
         <DiagramPanel
-          content={sections.DIAGRAM}
-          streaming={isStreaming(status)}
+          layer1Result={layer1Result}
+          sections={sections}
+          status={status}
         />
       </TabsPrimitive.Content>
 
