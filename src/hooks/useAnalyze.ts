@@ -1,13 +1,13 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import { parseSections } from "@/lib/utils/parseSections";
 import type {
   AnalysisState,
   AnalysisStatus,
   AudienceLevel,
   AnalysisMode,
   Layer1Result,
+  SectionKey,
 } from "@/types";
 
 const INITIAL_STATE: AnalysisState = {
@@ -92,26 +92,24 @@ export function useAnalyze() {
                   layer1Result: event.result,
                 }));
               } else if (event.type === "delta") {
+                const sectionKey = event.section as SectionKey;
                 accumulatedText += event.text;
-                const sections = parseSections(accumulatedText);
                 setState((s) => ({
                   ...s,
                   rawText: accumulatedText,
-                  sections,
+                  sections: {
+                    ...s.sections,
+                    [sectionKey]: ((s.sections[sectionKey] ?? "") + event.text),
+                  },
                 }));
               } else if (event.type === "section_revised") {
-                // Replace the revised section in accumulated text
-                accumulatedText = accumulatedText.replace(
-                  new RegExp(
-                    `(<!-- SECTION:${event.section} -->)[\\s\\S]*?(?=<!-- SECTION:|$)`
-                  ),
-                  `$1\n${event.text}\n`
-                );
-                const sections = parseSections(accumulatedText);
+                const sectionKey = event.section as SectionKey;
                 setState((s) => ({
                   ...s,
-                  rawText: accumulatedText,
-                  sections,
+                  sections: {
+                    ...s.sections,
+                    [sectionKey]: event.text,
+                  },
                 }));
               } else if (event.type === "verifying") {
                 setStatus("verifying");
