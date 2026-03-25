@@ -12,6 +12,7 @@ const GenerateSchema = z.object({
   keyTerms: z.string().min(10).max(10_000),
   language: z.string().optional().default("English"),
   contractLength: z.enum(["concise", "standard", "comprehensive"]).optional().default("standard"),
+  companyWebsite: z.string().url().max(500).optional(),
   privacyMode: z.boolean().optional().default(false),
 });
 
@@ -138,12 +139,17 @@ function buildUserPrompt(
   partyB: string,
   jurisdiction: string,
   keyTerms: string,
+  companyWebsite?: string,
 ): string {
+  const companyContext = companyWebsite
+    ? `\n\n**Company Website:** ${companyWebsite}\nUse this to infer the company's industry, business model, and appropriate professional tone. Tailor the contract language and specific clauses to match the company's sector and typical business practices.`
+    : "";
+
   return `Generate a ${contractType} contract with the following details:
 
 **Party A (First Party):** ${partyA}
 **Party B (Second Party):** ${partyB}
-**Jurisdiction:** ${jurisdiction}
+**Jurisdiction:** ${jurisdiction}${companyContext}
 
 **Key Terms and Requirements:**
 ${keyTerms}
@@ -169,7 +175,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { contractType, partyA, partyB, jurisdiction, keyTerms, language, contractLength, privacyMode } =
+  const { contractType, partyA, partyB, jurisdiction, keyTerms, language, contractLength, companyWebsite, privacyMode } =
     parsed.data;
 
   const client = getAnthropicClient(privacyMode);
@@ -192,7 +198,7 @@ export async function POST(req: NextRequest) {
           messages: [
             {
               role: "user",
-              content: buildUserPrompt(contractType, partyA, partyB, jurisdiction, keyTerms),
+              content: buildUserPrompt(contractType, partyA, partyB, jurisdiction, keyTerms, companyWebsite),
             },
           ],
         });

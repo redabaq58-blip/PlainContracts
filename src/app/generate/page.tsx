@@ -10,6 +10,7 @@ import {
   Unlock,
   Globe,
   RotateCcw,
+  Link2,
 } from "lucide-react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Disclaimer } from "@/components/layout/Disclaimer";
@@ -60,6 +61,7 @@ export default function GeneratePage() {
   const [keyTerms, setKeyTerms] = useState("");
   const [language, setLanguage] = useState("English");
   const [contractLength, setContractLength] = useState("standard");
+  const [companyWebsite, setCompanyWebsite] = useState("");
   const [privacyMode, setPrivacyMode] = useState(false);
 
   // Generation state
@@ -104,6 +106,7 @@ export default function GeneratePage() {
           keyTerms,
           language,
           contractLength,
+          companyWebsite: companyWebsite.trim() || undefined,
           privacyMode,
         }),
         signal: controller.signal,
@@ -161,7 +164,7 @@ export default function GeneratePage() {
       setStatus("error");
       setError(err instanceof Error ? err.message : "Unknown error");
     }
-  }, [contractType, partyA, partyB, jurisdiction, keyTerms, language, contractLength, privacyMode]);
+  }, [contractType, partyA, partyB, jurisdiction, keyTerms, language, contractLength, companyWebsite, privacyMode]);
 
   // ── Copy handler ─────────────────────────────────────────────────────────
 
@@ -292,6 +295,31 @@ export default function GeneratePage() {
                   )}
                 />
               </div>
+            </div>
+
+            {/* Company Website (optional) */}
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-foreground flex items-center gap-1.5">
+                <Link2 className="h-3.5 w-3.5 text-muted-foreground" />
+                Company Website
+                <span className="text-xs text-muted-foreground font-normal">(optional)</span>
+              </label>
+              <input
+                type="url"
+                value={companyWebsite}
+                onChange={(e) => setCompanyWebsite(e.target.value)}
+                placeholder="e.g. https://acme.com — helps tailor the contract to your business"
+                disabled={isGenerating}
+                className={cn(
+                  "w-full h-10 rounded-md border border-input px-3 text-sm",
+                  "bg-background text-foreground placeholder:text-muted-foreground",
+                  "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+                  "disabled:opacity-50 disabled:cursor-not-allowed"
+                )}
+              />
+              <p className="text-[10px] text-muted-foreground">
+                We use this to understand your industry, tone, and business context for a better-tailored contract.
+              </p>
             </div>
 
             {/* Jurisdiction */}
