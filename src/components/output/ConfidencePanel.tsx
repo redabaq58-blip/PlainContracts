@@ -15,23 +15,37 @@ function parseConfidenceText(text: string): {
   score: number;
   explanation: string;
 } {
-  const match = text.match(/^(\d+)\.\s*([\s\S]*)/);
-  if (match) {
-    const explanation = match[2].trim();
-    return {
-      score: Math.min(100, Math.max(0, parseInt(match[1], 10))),
-      explanation: explanation || "Translation complete.",
-    };
+  const trimmed = text.trim();
+
+  // Primary: number at start, any delimiter ("52.", "52:", "52 ", "52\n")
+  const strict = trimmed.match(/^(\d{1,3})[.):\s]/);
+  if (strict) {
+    const score = parseInt(strict[1], 10);
+    if (score <= 100) {
+      const explanation = trimmed.replace(/^\d+[.):\s]*/, "").trim();
+      return { score: Math.max(0, score), explanation: explanation || "Translation complete." };
+    }
   }
-  // Fallback: maybe the model returned just a number
-  const numOnly = text.match(/^(\d+)$/);
-  if (numOnly) {
+
+  // Just a bare number
+  if (/^\d+$/.test(trimmed)) {
     return {
-      score: Math.min(100, Math.max(0, parseInt(numOnly[1], 10))),
+      score: Math.min(100, Math.max(0, parseInt(trimmed, 10))),
       explanation: "Translation complete.",
     };
   }
-  return { score: 0, explanation: text || "Confidence unavailable." };
+
+  // Last resort: find first number ≤ 100 in the first 60 chars
+  // (handles "Score : 52. ..." or "Confiance: 52. ..." patterns in non-English outputs)
+  const loose = trimmed.slice(0, 60).match(/\b(\d{1,3})\b/);
+  if (loose) {
+    const score = parseInt(loose[1], 10);
+    if (score <= 100) {
+      return { score, explanation: trimmed };
+    }
+  }
+
+  return { score: 0, explanation: trimmed || "Confidence unavailable." };
 }
 
 export function ConfidencePanel({
@@ -79,7 +93,7 @@ export function ConfidencePanel({
           <div className="flex items-center gap-1.5 mb-1">
             <Shield className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm font-medium text-foreground">
-              Translation confidence
+              Analysis confidence
             </span>
           </div>
           <p className="text-sm text-muted-foreground">{explanation}</p>
@@ -122,7 +136,7 @@ export function ConfidencePanel({
       {layer1Result && (
         <div className="rounded-lg border border-border p-4 space-y-3">
           <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-            Contract Details (Layer 1 Detection)
+            Contract Details
           </h4>
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div>
@@ -134,11 +148,11 @@ export function ConfidencePanel({
               <p className="font-medium">{layer1Result.jurisdiction}</p>
             </div>
             <div>
-              <span className="text-xs text-muted-foreground">You are</span>
+              <span className="text-xs text-muted-foreground">Signer</span>
               <p className="font-medium">{layer1Result.signerRole}</p>
             </div>
             <div>
-              <span className="text-xs text-muted-foreground">Other party</span>
+              <span className="text-xs text-muted-foreground">Counterparty</span>
               <p className="font-medium">{layer1Result.counterpartyRole}</p>
             </div>
             {!layer1Result.isComplete && (

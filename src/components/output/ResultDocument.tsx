@@ -169,8 +169,16 @@ export function ResultDocument({
 
   const confidenceScore = (() => {
     if (!sections.CONFIDENCE) return null;
-    const m = sections.CONFIDENCE.match(/^(\d+)/);
-    return m ? parseInt(m[1], 10) : null;
+    const trimmed = sections.CONFIDENCE.trim();
+    // Number at start
+    const m = trimmed.match(/^(\d{1,3})[.):\s]/);
+    if (m) { const s = parseInt(m[1], 10); if (s <= 100) return s; }
+    // Bare number
+    if (/^\d+$/.test(trimmed)) return Math.min(100, parseInt(trimmed, 10));
+    // Number within first 60 chars (non-English prefixes like "Score : 52")
+    const loose = trimmed.slice(0, 60).match(/\b(\d{1,3})\b/);
+    if (loose) { const s = parseInt(loose[1], 10); if (s <= 100) return s; }
+    return null;
   })();
 
   const handleCopy = async () => {
