@@ -14,9 +14,42 @@ interface SectionCardProps {
 }
 
 /**
+ * Renders inline formatting: **bold**, *italic*, `code`
+ */
+function renderInline(text: string): React.ReactNode[] {
+  const parts: React.ReactNode[] = [];
+  let remaining = text;
+  let key = 0;
+
+  while (remaining.length > 0) {
+    // Bold: **text**
+    const boldMatch = remaining.match(/\*\*(.+?)\*\*/);
+    if (boldMatch && boldMatch.index !== undefined) {
+      if (boldMatch.index > 0) {
+        parts.push(<span key={key++}>{remaining.slice(0, boldMatch.index)}</span>);
+      }
+      parts.push(
+        <strong key={key++} className="font-semibold text-foreground">
+          {boldMatch[1]}
+        </strong>
+      );
+      remaining = remaining.slice(boldMatch.index + boldMatch[0].length);
+      continue;
+    }
+
+    // No more patterns found — emit the rest
+    parts.push(<span key={key++}>{remaining}</span>);
+    break;
+  }
+
+  return parts;
+}
+
+/**
  * Renders plain-text section content with proper visual hierarchy.
  * - Lines starting with a bullet marker → styled bullet row
  * - Lines starting with a digit → numbered item
+ * - Lines starting with ** → bold header/label
  * - Everything else → paragraph
  */
 export function FormattedContent({ text }: { text: string }) {
@@ -36,13 +69,27 @@ export function FormattedContent({ text }: { text: string }) {
 
     const bulletMatch = trimmed.match(/^[•\-*·–▪]\s*(.*)/);
     const numberedMatch = trimmed.match(/^(\d+)[.)]\s*(.*)/);
+    // Bold header line: **Something:** or **Something**
+    const boldHeaderMatch = trimmed.match(/^\*\*(.+?)\*\*:?\s*(.*)/);
 
-    if (bulletMatch) {
+    if (boldHeaderMatch && !bulletMatch) {
+      // Standalone bold header (like "**In return, Employer must:**" or "**Your protections:**")
+      elements.push(
+        <div key={i} className="mt-3 mb-1.5 first:mt-0">
+          <span className="text-sm font-bold text-foreground">
+            {boldHeaderMatch[1]}{boldHeaderMatch[2] ? ": " : ""}
+          </span>
+          {boldHeaderMatch[2] && (
+            <span className="text-sm text-foreground">{boldHeaderMatch[2]}</span>
+          )}
+        </div>
+      );
+    } else if (bulletMatch) {
       elements.push(
         <div key={i} className="flex items-start gap-2.5 py-0.5">
-          <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
+          <span className="mt-2 w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
           <span className="text-sm text-foreground leading-relaxed flex-1">
-            {bulletMatch[1]}
+            {renderInline(bulletMatch[1])}
           </span>
         </div>
       );
@@ -53,14 +100,14 @@ export function FormattedContent({ text }: { text: string }) {
             {numberedMatch[1]}.
           </span>
           <span className="text-sm text-foreground leading-relaxed flex-1">
-            {numberedMatch[2]}
+            {renderInline(numberedMatch[2])}
           </span>
         </div>
       );
     } else {
       elements.push(
         <p key={i} className="text-sm text-foreground leading-relaxed">
-          {trimmed}
+          {renderInline(trimmed)}
         </p>
       );
     }
@@ -113,7 +160,7 @@ export function SectionCard({
       ) : streaming && !content ? (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-          Generating…
+          Generating...
         </div>
       ) : (
         <FormattedContent text={content!} />
