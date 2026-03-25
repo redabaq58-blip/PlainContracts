@@ -11,6 +11,15 @@ interface ConfidencePanelProps {
   streaming?: boolean;
 }
 
+function sanitizeExplanation(text: string): string {
+  // Remove any truncation/character count references that leaked from prompts
+  return text
+    .replace(/\b(truncat(ed|ion)|character[s]? (out of|of|limit)|full length:?\s*\d+)/gi, "")
+    .replace(/\d{1,3},?\d{0,3}\s*characters?\b/gi, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
 function parseConfidenceText(text: string): {
   score: number;
   explanation: string;
@@ -22,7 +31,8 @@ function parseConfidenceText(text: string): {
   if (strict) {
     const score = parseInt(strict[1], 10);
     if (score <= 100) {
-      const explanation = trimmed.replace(/^\d+[.):\s]*/, "").trim();
+      const raw = trimmed.replace(/^\d+[.):\s]*/, "").trim();
+      const explanation = sanitizeExplanation(raw);
       return { score: Math.max(0, score), explanation: explanation || "Translation complete." };
     }
   }
@@ -41,11 +51,11 @@ function parseConfidenceText(text: string): {
   if (loose) {
     const score = parseInt(loose[1], 10);
     if (score <= 100) {
-      return { score, explanation: trimmed };
+      return { score, explanation: sanitizeExplanation(trimmed) };
     }
   }
 
-  return { score: 0, explanation: trimmed || "Confidence unavailable." };
+  return { score: 0, explanation: sanitizeExplanation(trimmed) || "Confidence unavailable." };
 }
 
 export function ConfidencePanel({
