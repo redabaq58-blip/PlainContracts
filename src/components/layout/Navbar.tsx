@@ -21,6 +21,12 @@ export function Navbar() {
           >
             Analyze
           </Link>
+          <Link
+            href="/generate"
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5"
+          >
+            Generate
+          </Link>
           <ThemeToggle />
         </div>
       </div>
