@@ -11,6 +11,7 @@ const GenerateSchema = z.object({
   jurisdiction: z.string().min(1).max(200),
   keyTerms: z.string().min(10).max(10_000),
   language: z.string().optional().default("English"),
+  contractLength: z.enum(["concise", "standard", "comprehensive"]).optional().default("standard"),
   privacyMode: z.boolean().optional().default(false),
 });
 
@@ -50,7 +51,18 @@ function sanitizeErrorMessage(err: unknown): string {
 
 // ─── System prompt ───────────────────────────────────────────────────────────
 
-function buildSystemPrompt(language: string): string {
+function getLengthGuidance(contractLength: string): string {
+  switch (contractLength) {
+    case "concise":
+      return `**Length**: Keep the contract CONCISE — approximately 2-4 printed pages. Include only essential terms. Combine related clauses. Skip boilerplate that isn't critical for this contract type. Prioritize clarity and brevity.`;
+    case "comprehensive":
+      return `**Length**: Generate a COMPREHENSIVE contract — approximately 7-10 printed pages maximum. Include all standard sections with detailed sub-clauses. NEVER exceed 10 pages.`;
+    default:
+      return `**Length**: Generate a STANDARD-length contract — approximately 4-7 printed pages. Include all important sections with reasonable detail. Don't pad with unnecessary boilerplate.`;
+  }
+}
+
+function buildSystemPrompt(language: string, contractLength: string): string {
   return `You are an expert contract attorney with decades of experience drafting, reviewing, and stress-testing legal agreements across multiple jurisdictions. Your contracts have withstood rigorous legal challenges.
 
 Generate a complete, professional, ready-to-sign contract based on the user's specifications. Follow these requirements:
@@ -69,9 +81,11 @@ Generate a complete, professional, ready-to-sign contract based on the user's sp
    - Dispute resolution (arbitration/mediation/litigation as appropriate for the jurisdiction)
    - Force majeure
    - General provisions (severability, entire agreement, amendments, notices, assignment, waiver)
-   - Signature blocks for both parties
+   - Signature blocks for both parties (see point 5)
 
-2. **Quality Standards**:
+2. ${getLengthGuidance(contractLength)}
+
+3. **Quality Standards**:
    - Use clear but legally precise language
    - Include specific cross-references between sections (e.g., "as defined in Section 2.3")
    - Ensure protective clauses for BOTH parties — the contract should be balanced
@@ -79,14 +93,41 @@ Generate a complete, professional, ready-to-sign contract based on the user's sp
    - Be jurisdiction-aware — reference applicable laws and standards for the specified jurisdiction
    - Include reasonable default values for liability caps, notice periods, and cure periods
 
-3. **Formatting**:
+4. **Formatting**:
    - Use Markdown formatting for readability
    - Use **bold** for section headings
    - Use numbered/lettered lists for sub-clauses
    - Include blank lines between sections for clarity
-   - Signature blocks should include lines for name, title, date, and signature
 
-4. **Language**: Generate the entire contract in ${language}.
+5. **Signature Block**: End the contract with a proper signature section. Use this exact format:
+
+---
+
+## SIGNATURES
+
+**IN WITNESS WHEREOF**, the Parties have executed this Agreement as of the date first written above.
+
+**[Party A Name]**
+
+Signature: _________________________
+
+Printed Name: _________________________
+
+Title: _________________________
+
+Date: _________________________
+
+**[Party B Name]**
+
+Signature: _________________________
+
+Printed Name: _________________________
+
+Title: _________________________
+
+Date: _________________________
+
+6. **Language**: Generate the entire contract in ${language}.
 
 Do NOT include any commentary, explanations, or notes outside the contract text itself. Output ONLY the contract document.`;
 }
@@ -128,7 +169,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { contractType, partyA, partyB, jurisdiction, keyTerms, language, privacyMode } =
+  const { contractType, partyA, partyB, jurisdiction, keyTerms, language, contractLength, privacyMode } =
     parsed.data;
 
   const client = getAnthropicClient(privacyMode);
@@ -147,7 +188,7 @@ export async function POST(req: NextRequest) {
         const messageStream = client.messages.stream({
           model: "claude-sonnet-4-6",
           max_tokens: 8192,
-          system: buildSystemPrompt(language),
+          system: buildSystemPrompt(language, contractLength),
           messages: [
             {
               role: "user",
