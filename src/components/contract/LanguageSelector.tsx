@@ -4,15 +4,12 @@ import { Globe } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 
 const LANGUAGES = [
-  { value: "English", label: "English" },
-  { value: "French", label: "Français" },
-  { value: "Spanish", label: "Español" },
-  { value: "German", label: "Deutsch" },
-  { value: "Portuguese", label: "Português" },
-  { value: "Italian", label: "Italiano" },
-  { value: "Arabic", label: "العربية" },
-  { value: "Chinese (Simplified)", label: "中文" },
-  { value: "Japanese", label: "日本語" },
+  { value: "English",    label: "English"    },
+  { value: "French",     label: "Français"   },
+  { value: "Spanish",    label: "Español"    },
+  { value: "German",     label: "Deutsch"    },
+  { value: "Portuguese", label: "Português"  },
+  { value: "Italian",    label: "Italiano"   },
 ];
 
 interface LanguageSelectorProps {
