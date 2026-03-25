@@ -10,6 +10,8 @@ const Layer1CacheSchema = z.object({
   isComplete: z.boolean(),
   completenessNote: z.string(),
   confidence: z.number(),
+  voidRisk: z.boolean().optional().default(false),
+  missingElements: z.array(z.string()).optional().default([]),
 });
 
 const AnalyzeSchema = z.object({
