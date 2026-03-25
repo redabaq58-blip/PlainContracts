@@ -75,7 +75,8 @@ export function useAnalyze() {
 
       const decoder = new TextDecoder();
       let buffer = "";
-      let accumulatedText = "";
+
+      let receivedDone = false;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -98,10 +99,8 @@ export function useAnalyze() {
                 }));
               } else if (event.type === "delta") {
                 const sectionKey = event.section as SectionKey;
-                accumulatedText += event.text;
                 setState((s) => ({
                   ...s,
-                  rawText: accumulatedText,
                   sections: {
                     ...s.sections,
                     [sectionKey]: ((s.sections[sectionKey] ?? "") + event.text),
@@ -132,9 +131,19 @@ export function useAnalyze() {
               throw parseErr;
             }
           } else if (line.startsWith("done: ")) {
+            receivedDone = true;
             setState((s) => ({ ...s, status: "done" }));
           }
         }
+      }
+
+      // Fallback: if stream ended without a done event, finalize status
+      if (!receivedDone) {
+        setState((s) =>
+          s.status !== "done" && s.status !== "error"
+            ? { ...s, status: "done" }
+            : s
+        );
       }
     } catch (err) {
       if ((err as Error).name === "AbortError") return;
