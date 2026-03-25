@@ -64,9 +64,12 @@ export function useAnalyze() {
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        const msg = typeof err.error === "string" && err.error.length < 120 && !err.error.includes("{")
-          ? err.error
-          : "Analysis failed. Please try again.";
+        const msg =
+          typeof err.error === "string" &&
+          err.error.length < 120 &&
+          !err.error.includes("{")
+            ? err.error
+            : "Analysis failed. Please try again.";
         throw new Error(msg);
       }
 
@@ -94,16 +97,22 @@ export function useAnalyze() {
               if (event.type === "layer1") {
                 setState((s) => ({
                   ...s,
-                  status: "streaming",
+                  status: "layer1",
                   layer1Result: event.result,
                 }));
+              } else if (event.type === "layer2_parallel_start") {
+                setStatus("extracting");
+              } else if (event.type === "layer2_parallel_done") {
+                // Sections already emitted as deltas — no state change needed
+              } else if (event.type === "layer2_synthesis") {
+                setStatus("streaming");
               } else if (event.type === "delta") {
                 const sectionKey = event.section as SectionKey;
                 setState((s) => ({
                   ...s,
                   sections: {
                     ...s.sections,
-                    [sectionKey]: ((s.sections[sectionKey] ?? "") + event.text),
+                    [sectionKey]: (s.sections[sectionKey] ?? "") + event.text,
                   },
                 }));
               } else if (event.type === "section_revised") {

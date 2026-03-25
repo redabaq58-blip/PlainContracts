@@ -1,107 +1,18 @@
 import { getAnthropicClient } from "./client";
-import type { Layer3Result } from "@/types";
-
-const FALLBACK: Layer3Result = {
-  accurate: true,
-  errors: [],
-  confidenceAdjustment: -5,
-};
+import type { Layer3Error } from "@/types";
 
 /**
- * Layer 3 — Adversarial Verification
- * Uses Claude Haiku to verify that every flagged clause exists in the source text
- * and that no material obligations were invented. Adjusts confidence accordingly.
- */
-export async function runLayer3(
-  contractText: string,
-  layer2Output: string,
-  privacyMode = false
-): Promise<Layer3Result> {
-  const client = getAnthropicClient(privacyMode);
-
-  // Extract just the REDFLAGS and MISSING sections for verification
-  const redflagsMatch = layer2Output.match(
-    /<!-- SECTION:REDFLAGS -->([\s\S]*?)(?=<!-- SECTION:|$)/
-  );
-  const missingMatch = layer2Output.match(
-    /<!-- SECTION:MISSING -->([\s\S]*?)(?=<!-- SECTION:|$)/
-  );
-
-  const flagsText = redflagsMatch?.[1]?.trim() ?? "";
-  const missingText = missingMatch?.[1]?.trim() ?? "";
-
-  if (!flagsText && !missingText) return FALLBACK;
-
-  try {
-    const response = await client.messages.create({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 512,
-      system: `You are a contract analysis quality checker. Your job is to verify that the red flags identified in a contract analysis actually appear in the source contract text. You must return ONLY a JSON object with no surrounding text.
-
-Required JSON shape:
-{
-  "accurate": true or false,
-  "errors": [
-    {
-      "section": "REDFLAGS or MISSING",
-      "description": "What is wrong",
-      "correction": "What should be corrected"
-    }
-  ],
-  "confidenceAdjustment": number between -30 and +10
-}
-
-Rules:
-- If all red flags reference clauses that actually exist in the contract: accurate=true, confidenceAdjustment between 0 and +10
-- If any red flags reference clauses NOT found in the contract: accurate=false, list each error, confidenceAdjustment between -20 and -30
-- If red flags are real but minor wording issues: accurate=true, confidenceAdjustment between -5 and 0`,
-      messages: [
-        {
-          role: "user",
-          content: `CONTRACT TEXT (first 4000 chars):
-${contractText.slice(0, 4000)}
-
-RED FLAGS IDENTIFIED:
-${flagsText.slice(0, 1500)}
-
-MISSING CLAUSES IDENTIFIED:
-${missingText.slice(0, 500)}
-
-Verify that the red flags are grounded in the actual contract text. Do any clause references appear fabricated?`,
-        },
-      ],
-    });
-
-    const text =
-      response.content[0].type === "text" ? response.content[0].text : "";
-    const parsed = JSON.parse(text);
-
-    if (
-      typeof parsed.accurate === "boolean" &&
-      Array.isArray(parsed.errors) &&
-      typeof parsed.confidenceAdjustment === "number"
-    ) {
-      return {
-        accurate: parsed.accurate,
-        errors: parsed.errors,
-        confidenceAdjustment: Math.max(-30, Math.min(10, parsed.confidenceAdjustment)),
-      };
-    }
-
-    return FALLBACK;
-  } catch {
-    return FALLBACK;
-  }
-}
-
-/**
- * Revise the REDFLAGS section when Layer 3 finds errors.
- * Returns corrected REDFLAGS JSON string.
+ * Layer 3 — Flag Revision
+ *
+ * When the inline flag verification (in pipeline.ts) detects hallucinated clause
+ * references, this function corrects the REDFLAGS JSON using Haiku.
+ *
+ * The full stress test engine is in layer3-stress.ts.
  */
 export async function reviseFlags(
   contractText: string,
   originalFlags: string,
-  errors: Layer3Result["errors"],
+  errors: Layer3Error[],
   privacyMode = false
 ): Promise<string> {
   const client = getAnthropicClient(privacyMode);

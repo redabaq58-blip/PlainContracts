@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getAnthropicClient } from "@/lib/ai/client";
+import { getBoilerplate } from "@/constants/clauseDatabase";
 
 // ─── Schema ──────────────────────────────────────────────────────────────────
 
@@ -44,7 +45,6 @@ function sanitizeErrorMessage(err: unknown): string {
   if (msg.includes("fetch") || msg.includes("network") || msg.includes("ECONNREFUSED"))
     return "Network error. Please check your connection and try again.";
 
-  // If the message is short and clean, pass it through
   if (msg.length < 120 && !msg.includes("{")) return msg;
 
   return "Something went wrong during contract generation. Please try again.";
@@ -80,7 +80,6 @@ Generate a complete, professional, ready-to-sign contract based on the user's sp
    - Intellectual property ownership (where applicable)
    - Term and termination
    - Dispute resolution (arbitration/mediation/litigation as appropriate for the jurisdiction)
-   - Force majeure
    - General provisions (severability, entire agreement, amendments, notices, assignment, waiver)
    - Signature blocks for both parties (see point 5)
 
@@ -88,11 +87,13 @@ Generate a complete, professional, ready-to-sign contract based on the user's sp
 
 3. **Quality Standards**:
    - Use clear but legally precise language
+   - Use objective performance metrics — NEVER use "best efforts" or "reasonable endeavours" for core obligations. Use measurable standards (e.g., "within 5 Business Days", "not less than 99.5% uptime").
+   - Use "shall" for mandatory obligations and "may" for discretionary rights. Active voice throughout.
    - Include specific cross-references between sections (e.g., "as defined in Section 2.3")
    - Ensure protective clauses for BOTH parties — the contract should be balanced
-   - Stress-test against common legal challenges: ambiguous terms, missing edge cases, unenforceable clauses
+   - Include a mutual limitation of liability cap referenced to the contract value
    - Be jurisdiction-aware — reference applicable laws and standards for the specified jurisdiction
-   - Include reasonable default values for liability caps, notice periods, and cure periods
+   - Include reasonable default values for notice periods and cure periods
 
 4. **Formatting**:
    - Use Markdown formatting for readability
@@ -139,7 +140,7 @@ function buildUserPrompt(
   partyB: string,
   jurisdiction: string,
   keyTerms: string,
-  companyWebsite?: string,
+  companyWebsite?: string
 ): string {
   const companyContext = companyWebsite
     ? `\n\n**Company Website:** ${companyWebsite}\nUse this to infer the company's industry, business model, and appropriate professional tone. Tailor the contract language and specific clauses to match the company's sector and typical business practices.`
@@ -155,6 +156,93 @@ function buildUserPrompt(
 ${keyTerms}
 
 Generate the complete contract now.`;
+}
+
+// ─── Hostile Review (hidden from user) ───────────────────────────────────────
+
+interface HostileReviewResult {
+  loophole: string;
+  fix: string;
+  clauseToAdd: string;
+}
+
+async function runHostileReview(
+  contractText: string,
+  privacyMode: boolean
+): Promise<HostileReviewResult | null> {
+  const client = getAnthropicClient(privacyMode);
+
+  try {
+    const response = await client.messages.create({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 512,
+      system: `You are hostile counsel hired to find a loophole in this contract. Find ONE specific, exploitable legal loophole that would allow a party to breach their core obligations without paying damages. Return ONLY a JSON object:
+{
+  "loophole": "One sentence describing the specific exploitable gap",
+  "fix": "One sentence describing the clause language that closes this gap",
+  "clauseToAdd": "The complete clause text to add or modify, written in professional legal language"
+}
+If no exploitable loophole exists, return: { "loophole": "", "fix": "", "clauseToAdd": "" }`,
+      messages: [
+        {
+          role: "user",
+          content: `Find a loophole in this contract:\n\n${contractText.slice(0, 8000)}`,
+        },
+      ],
+    });
+
+    const text = response.content[0].type === "text" ? response.content[0].text : "";
+    const cleaned = text.replace(/^```(?:json)?\n?/m, "").replace(/\n?```$/m, "").trim();
+    const parsed = JSON.parse(cleaned);
+
+    if (
+      typeof parsed.loophole === "string" &&
+      typeof parsed.fix === "string" &&
+      typeof parsed.clauseToAdd === "string"
+    ) {
+      return parsed;
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+async function applyHostileFix(
+  contractText: string,
+  loophole: string,
+  clauseToAdd: string,
+  privacyMode: boolean
+): Promise<string> {
+  const client = getAnthropicClient(privacyMode);
+
+  try {
+    const response = await client.messages.create({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 8192,
+      system: `You are a contract editor. You will receive a contract and a clause to add. Insert the clause in the most appropriate section of the contract. Return the COMPLETE contract text with the fix applied. Maintain all existing formatting and structure. Do not add any commentary.`,
+      messages: [
+        {
+          role: "user",
+          content: `CONTRACT:
+${contractText}
+
+LOOPHOLE IDENTIFIED: ${loophole}
+
+CLAUSE TO INSERT:
+${clauseToAdd}
+
+Return the complete contract with this clause inserted in the appropriate section.`,
+        },
+      ],
+    });
+
+    const text = response.content[0].type === "text" ? response.content[0].text : "";
+    return text || contractText;
+  } catch {
+    return contractText;
+  }
 }
 
 // ─── Route handler ───────────────────────────────────────────────────────────
@@ -175,8 +263,17 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { contractType, partyA, partyB, jurisdiction, keyTerms, language, contractLength, companyWebsite, privacyMode } =
-    parsed.data;
+  const {
+    contractType,
+    partyA,
+    partyB,
+    jurisdiction,
+    keyTerms,
+    language,
+    contractLength,
+    companyWebsite,
+    privacyMode,
+  } = parsed.data;
 
   const client = getAnthropicClient(privacyMode);
 
@@ -191,6 +288,7 @@ export async function POST(req: NextRequest) {
       };
 
       try {
+        // ── Step 1: Generate contract draft ──────────────────────────────────
         const messageStream = client.messages.stream({
           model: "claude-sonnet-4-6",
           max_tokens: 8192,
@@ -198,10 +296,19 @@ export async function POST(req: NextRequest) {
           messages: [
             {
               role: "user",
-              content: buildUserPrompt(contractType, partyA, partyB, jurisdiction, keyTerms, companyWebsite),
+              content: buildUserPrompt(
+                contractType,
+                partyA,
+                partyB,
+                jurisdiction,
+                keyTerms,
+                companyWebsite
+              ),
             },
           ],
         });
+
+        let fullContractText = "";
 
         for await (const event of messageStream) {
           if (
@@ -209,7 +316,69 @@ export async function POST(req: NextRequest) {
             event.delta.type === "text_delta"
           ) {
             emit(sseEvent({ type: "delta", text: event.delta.text }));
+            fullContractText += event.delta.text;
           }
+        }
+
+        // ── Step 2: Inject jurisdiction-specific boilerplate ─────────────────
+        const boilerplate = getBoilerplate(jurisdiction);
+        if (
+          boilerplate &&
+          !fullContractText.toLowerCase().includes("force majeure")
+        ) {
+          // Insert boilerplate before the signature block
+          const sigIdx = fullContractText.lastIndexOf("---\n\n## SIGNATURES");
+          if (sigIdx !== -1) {
+            fullContractText =
+              fullContractText.slice(0, sigIdx) +
+              "\n---\n\n## STANDARD PROTECTIVE PROVISIONS\n\n" +
+              boilerplate.trim() +
+              "\n\n" +
+              fullContractText.slice(sigIdx);
+          } else {
+            fullContractText += "\n\n---\n\n## STANDARD PROTECTIVE PROVISIONS\n\n" + boilerplate.trim();
+          }
+          // Emit the injected boilerplate as a delta
+          emit(sseEvent({ type: "delta", text: "\n\n---\n\n## STANDARD PROTECTIVE PROVISIONS\n\n" + boilerplate.trim() }));
+        }
+
+        // ── Step 3: Hostile Review (hidden, 20s timeout) ─────────────────────
+        emit(sseEvent({ type: "hostile_review", status: "checking" }));
+
+        const TIMEOUT_RESULT = null;
+        const hostileResult = await Promise.race([
+          runHostileReview(fullContractText, privacyMode),
+          new Promise<null>((resolve) => setTimeout(() => resolve(TIMEOUT_RESULT), 20_000)),
+        ]);
+
+        if (hostileResult && hostileResult.loophole && hostileResult.clauseToAdd) {
+          // Apply the fix
+          const fixedContract = await Promise.race([
+            applyHostileFix(
+              fullContractText,
+              hostileResult.loophole,
+              hostileResult.clauseToAdd,
+              privacyMode
+            ),
+            new Promise<string>((resolve) =>
+              setTimeout(() => resolve(fullContractText), 15_000)
+            ),
+          ]);
+
+          if (fixedContract !== fullContractText) {
+            // Replace the contract with the fixed version (send a full reset + re-emit)
+            emit(sseEvent({ type: "contract_reset", text: fixedContract }));
+          }
+
+          emit(
+            sseEvent({
+              type: "hostile_review",
+              status: "fixed",
+              count: 1,
+            })
+          );
+        } else {
+          emit(sseEvent({ type: "hostile_review", status: "clean" }));
         }
 
         emit(sseDone());

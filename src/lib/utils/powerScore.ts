@@ -1,4 +1,4 @@
-import type { RedFlag } from "@/types";
+import type { RedFlag, StressTestResult } from "@/types";
 
 const SEVERITY_WEIGHTS: Record<string, number> = {
   High: 15,
@@ -10,32 +10,66 @@ const SEVERITY_WEIGHTS: Record<string, number> = {
   low: 3,
 };
 
+// Stress test deductions (only applied when triggered: true)
+const STRESS_TEST_DEDUCTIONS: Record<string, number> = {
+  soleRemedy: 15,       // Sole remedy trap — strips right to sue
+  interplay: 10,         // Liability cap / indemnity inter-play
+  uncappedIndemnity: 10, // Uncapped indemnity or no termination for convenience
+  successorRisk: 5,      // Assignment / change of control risk
+  contraProferentem: 5,  // Contra proferentem / data privacy gap
+};
+
 // Maximum total deduction from red flags and missing clauses
 const MAX_FLAG_DEDUCTION = 55;
 const MAX_MISSING_DEDUCTION = 20;
+const MAX_STRESS_DEDUCTION = 40;
 
 /**
- * Calculates a contract fairness score (0-100).
- * 100 = perfectly balanced. 0 = completely one-sided against you.
- * Deducts points for each red flag weighted by severity,
- * with caps to prevent the score from always hitting zero.
+ * Calculates a contract fairness / balance score (0–100).
+ * 100 = perfectly balanced. 0 = completely one-sided or unenforceable.
+ *
+ * Deduction sources (capped to prevent always hitting zero):
+ * 1. Red flags weighted by severity
+ * 2. Missing standard clauses (rough heuristic: bullet count)
+ * 3. Structural stress tests that triggered (adversarial findings)
+ *
+ * Bonus: if ≥ 3 stress tests did NOT trigger and score > 60, add +5 for
+ * demonstrably balanced risk allocation.
  */
 export function calculatePowerScore(
   redFlags: RedFlag[],
-  missingClausesText: string
+  missingClausesText: string,
+  stressTests: StressTestResult[] = []
 ): number {
   let score = 100;
 
-  // Deduct for red flags, capped
+  // ── Red flag deductions (capped) ─────────────────────────────────────────
   let flagDeduction = 0;
   for (const flag of redFlags) {
     flagDeduction += SEVERITY_WEIGHTS[flag.severity] ?? 3;
   }
   score -= Math.min(flagDeduction, MAX_FLAG_DEDUCTION);
 
-  // Deduct for missing clauses (rough heuristic: count bullet points), capped
+  // ── Missing clause deductions (rough heuristic: count bullet points, capped)
   const missingCount = (missingClausesText.match(/^[-•*]/gm) ?? []).length;
   score -= Math.min(missingCount * 2, MAX_MISSING_DEDUCTION);
+
+  // ── Stress test deductions (capped) ──────────────────────────────────────
+  let stressDeduction = 0;
+  let notTriggeredCount = 0;
+  for (const test of stressTests) {
+    if (test.triggered) {
+      stressDeduction += STRESS_TEST_DEDUCTIONS[test.test] ?? 5;
+    } else {
+      notTriggeredCount++;
+    }
+  }
+  score -= Math.min(stressDeduction, MAX_STRESS_DEDUCTION);
+
+  // ── Balanced contract bonus ───────────────────────────────────────────────
+  if (notTriggeredCount >= 3 && score > 60) {
+    score += 5;
+  }
 
   return Math.max(5, Math.min(100, Math.round(score)));
 }

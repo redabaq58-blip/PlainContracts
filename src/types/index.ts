@@ -14,6 +14,8 @@ export interface Layer1Result {
   isComplete: boolean;
   completenessNote: string;
   confidence: number;
+  voidRisk: boolean;
+  missingElements: string[];
 }
 
 // ─── Layer 2 outputs ─────────────────────────────────────────────────────────
@@ -41,10 +43,18 @@ export interface Layer3Error {
   correction: string;
 }
 
+export interface StressTestResult {
+  test: "interplay" | "soleRemedy" | "successorRisk" | "contraProferentem" | "uncappedIndemnity";
+  triggered: boolean;
+  finding: string;
+  severity: Severity;
+}
+
 export interface Layer3Result {
   accurate: boolean;
   errors: Layer3Error[];
   confidenceAdjustment: number;
+  stressTests: StressTestResult[];
 }
 
 // ─── Sections ─────────────────────────────────────────────────────────────────
@@ -66,6 +76,7 @@ export type ParsedSections = Partial<Record<SectionKey, string>>;
 export type AnalysisStatus =
   | "idle"
   | "layer1"
+  | "extracting"
   | "streaming"
   | "verifying"
   | "done"

@@ -1,14 +1,18 @@
 import { getAnthropicClient } from "./client";
 import { runLayer1 } from "./layer1-intel";
+import { runLayer2Agents } from "./layer2-agents";
 import { buildLayer2SystemPrompt, buildLayer2UserPrompt } from "./layer2-translate";
-import { runLayer3, reviseFlags } from "./layer3-verify";
+import { reviseFlags } from "./layer3-verify";
+import { runStressTests } from "./layer3-stress";
 import { parseJsonSection } from "@/lib/utils/parseSections";
 import { calculatePowerScore } from "@/lib/utils/powerScore";
 import type {
   AudienceLevel,
   AnalysisMode,
   Layer1Result,
+  Layer3Result,
   RedFlag,
+  StressTestResult,
 } from "@/types";
 
 // ─── SSE helpers ─────────────────────────────────────────────────────────────
@@ -44,10 +48,8 @@ function processChunk(
     const delimStart = state.buffer.indexOf(SECTION_PREFIX);
 
     if (delimStart === -1) {
-      // No delimiter found — check for potential partial delimiter at the end
       const partialIdx = findPartialDelimiter(state.buffer);
       if (partialIdx !== -1) {
-        // Emit everything before the potential partial
         const safeText = state.buffer.slice(0, partialIdx);
         if (state.currentSection && safeText) {
           state.accumulated[state.currentSection] =
@@ -56,7 +58,6 @@ function processChunk(
         }
         state.buffer = state.buffer.slice(partialIdx);
       } else {
-        // Safe to emit everything
         if (state.currentSection && state.buffer) {
           state.accumulated[state.currentSection] =
             (state.accumulated[state.currentSection] ?? "") + state.buffer;
@@ -67,7 +68,6 @@ function processChunk(
       break;
     }
 
-    // Emit text before this delimiter
     if (delimStart > 0 && state.currentSection) {
       const before = state.buffer.slice(0, delimStart);
       state.accumulated[state.currentSection] =
@@ -75,13 +75,11 @@ function processChunk(
       onDelta(state.currentSection, before);
     }
 
-    // Find end of delimiter
     const delimEnd = state.buffer.indexOf(
       SECTION_SUFFIX,
       delimStart + SECTION_PREFIX.length
     );
     if (delimEnd === -1) {
-      // Incomplete delimiter — hold the buffer
       state.buffer = state.buffer.slice(delimStart);
       break;
     }
@@ -124,7 +122,6 @@ function sanitizeErrorMessage(err: unknown): string {
   if (msg.includes("fetch") || msg.includes("network") || msg.includes("ECONNREFUSED"))
     return "Network error. Please check your connection and try again.";
 
-  // If the message is short and clean, pass it through
   if (msg.length < 120 && !msg.includes("{")) return msg;
 
   return "Something went wrong during analysis. Please try again.";
@@ -132,9 +129,70 @@ function sanitizeErrorMessage(err: unknown): string {
 
 // ─── Timeout helper ───────────────────────────────────────────────────────────
 
-/** Resolves with `fallback` after `ms` milliseconds. Use with Promise.race(). */
 function withTimeout<T>(ms: number, fallback: T): Promise<T> {
   return new Promise((resolve) => setTimeout(() => resolve(fallback), ms));
+}
+
+// ─── Inline flag verification (lightweight Haiku check) ───────────────────────
+
+async function verifyFlags(
+  contractText: string,
+  flagsText: string,
+  missingText: string,
+  privacyMode: boolean
+): Promise<{ accurate: boolean; errors: Array<{ section: string; description: string; correction: string }>; confidenceAdjustment: number }> {
+  const client = getAnthropicClient(privacyMode);
+
+  if (!flagsText && !missingText) {
+    return { accurate: true, errors: [], confidenceAdjustment: 0 };
+  }
+
+  try {
+    const response = await client.messages.create({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 512,
+      system: `You are a contract analysis quality checker. Verify that red flags identified in a contract analysis actually appear in the source contract text. Return ONLY a JSON object.
+
+Required JSON shape:
+{
+  "accurate": true or false,
+  "errors": [
+    { "section": "REDFLAGS or MISSING", "description": "What is wrong", "correction": "What should be corrected" }
+  ],
+  "confidenceAdjustment": number between -30 and +10
+}
+
+Rules:
+- If all red flags reference clauses that actually exist in the contract: accurate=true, confidenceAdjustment 0 to +10
+- If any red flags reference clauses NOT found in the contract: accurate=false, list each error, confidenceAdjustment -20 to -30
+- If red flags are real but minor wording issues: accurate=true, confidenceAdjustment -5 to 0`,
+      messages: [
+        {
+          role: "user",
+          content: `CONTRACT TEXT (first 4000 chars):\n${contractText.slice(0, 4000)}\n\nRED FLAGS IDENTIFIED:\n${flagsText.slice(0, 1500)}\n\nMISSING CLAUSES IDENTIFIED:\n${missingText.slice(0, 500)}\n\nVerify that the red flags are grounded in the actual contract text.`,
+        },
+      ],
+    });
+
+    const text = response.content[0].type === "text" ? response.content[0].text : "";
+    const parsed = JSON.parse(text);
+
+    if (
+      typeof parsed.accurate === "boolean" &&
+      Array.isArray(parsed.errors) &&
+      typeof parsed.confidenceAdjustment === "number"
+    ) {
+      return {
+        accurate: parsed.accurate,
+        errors: parsed.errors,
+        confidenceAdjustment: Math.max(-30, Math.min(10, parsed.confidenceAdjustment)),
+      };
+    }
+
+    return { accurate: true, errors: [], confidenceAdjustment: 0 };
+  } catch {
+    return { accurate: true, errors: [], confidenceAdjustment: 0 };
+  }
 }
 
 // ─── Main pipeline ────────────────────────────────────────────────────────────
@@ -149,8 +207,14 @@ export interface PipelineOptions {
 }
 
 /**
- * Runs the full 3-layer contract analysis pipeline.
- * Yields Server-Sent Events as a ReadableStream.
+ * V2 Pipeline — Parallel Extraction + Synthesis + Senior Partner Stress Tests.
+ *
+ * Flow:
+ *   Layer 1 (Haiku)            → contract classification + void risk
+ *   Layer 2A/B/C (Haiku x3)   → parallel extraction of OBLIGATIONS, TIMELINE, POWERS
+ *   Layer 2 Synthesis (Sonnet) → SUMMARY, REDFLAGS, MISSING, CONFIDENCE (streaming)
+ *   Layer 3 Stress (Sonnet)    → 5 structural stress tests
+ *   Layer 3 Verify (Haiku)     → flag grounding check + auto-revision
  */
 export function encodePipelineStream(options: PipelineOptions): ReadableStream {
   const {
@@ -179,15 +243,51 @@ export function encodePipelineStream(options: PipelineOptions): ReadableStream {
 
         emit(sseEvent({ type: "layer1", result: layer1Result }));
 
-        // ── Layer 2 (streaming) ───────────────────────────────────────────────
+        // ── Layer 2 Parallel Agents (A: Obligations, B: Timeline, C: Powers) ─
+        emit(sseEvent({ type: "layer2_parallel_start" }));
+
+        const agentResults = await runLayer2Agents(
+          contractText,
+          layer1Result,
+          mode,
+          privacyMode
+        );
+
+        // Emit each extracted section as delta events so the UI renders them immediately
+        if (agentResults.obligations) {
+          emit(sseEvent({ type: "delta", section: "OBLIGATIONS", text: agentResults.obligations }));
+        }
+        if (agentResults.timeline) {
+          emit(sseEvent({ type: "delta", section: "TIMELINE", text: agentResults.timeline }));
+        }
+        if (agentResults.powers) {
+          emit(sseEvent({ type: "delta", section: "POWERS", text: agentResults.powers }));
+        }
+
+        emit(sseEvent({ type: "layer2_parallel_done" }));
+
+        // ── Layer 2 Synthesis (streaming Sonnet) — SUMMARY, REDFLAGS, MISSING, CONFIDENCE ──
+        emit(sseEvent({ type: "layer2_synthesis" }));
+
         const client = getAnthropicClient(privacyMode);
         const systemPrompt = buildLayer2SystemPrompt(audienceLevel, mode, layer1Result, language);
-        const userPrompt = buildLayer2UserPrompt(contractText, mode);
+        const userPrompt = buildLayer2UserPrompt(
+          contractText,
+          mode,
+          agentResults.obligations,
+          agentResults.timeline,
+          agentResults.powers
+        );
 
         const parserState: StreamParserState = {
           buffer: "",
           currentSection: null,
-          accumulated: {},
+          accumulated: {
+            // Pre-populate agent sections so they're available for power score calculation
+            OBLIGATIONS: agentResults.obligations,
+            TIMELINE: agentResults.timeline,
+            POWERS: agentResults.powers,
+          },
         };
 
         const stream = client.messages.stream({
@@ -213,8 +313,7 @@ export function encodePipelineStream(options: PipelineOptions): ReadableStream {
                 emit(sseEvent({ type: "delta", section, text: delta }));
               },
               (_section) => {
-                // section boundary detected — no SSE event needed, client
-                // infers sections from delimiters in the accumulated text
+                // section boundary detected — client infers from delimiters
               }
             );
           });
@@ -228,48 +327,76 @@ export function encodePipelineStream(options: PipelineOptions): ReadableStream {
           parserState.accumulated[parserState.currentSection] =
             (parserState.accumulated[parserState.currentSection] ?? "") +
             parserState.buffer;
-          emit(sseEvent({ type: "delta", section: parserState.currentSection, text: parserState.buffer }));
+          emit(
+            sseEvent({
+              type: "delta",
+              section: parserState.currentSection,
+              text: parserState.buffer,
+            })
+          );
         }
 
-        // Reconstruct full Layer 2 text from accumulated sections
-        const layer2Text = Object.entries(parserState.accumulated)
-          .map(([k, v]) => `<!-- SECTION:${k} -->\n${v}`)
+        // Build synthesis text for Layer 3 context
+        const synthesisText = ["SUMMARY", "REDFLAGS", "MISSING", "CONFIDENCE"]
+          .map((k) =>
+            parserState.accumulated[k]
+              ? `<!-- SECTION:${k} -->\n${parserState.accumulated[k]}`
+              : ""
+          )
+          .filter(Boolean)
           .join("\n\n");
 
-        // ── Layer 3 (verification) — 25 s timeout, graceful fallback ──────────
+        // ── Layer 3: Stress Tests (Sonnet) + Flag Verification (Haiku) ───────
         emit(sseEvent({ type: "verifying" }));
 
-        const L3_FALLBACK: import("@/types").Layer3Result = {
-          accurate: true,
-          errors: [],
-          confidenceAdjustment: 0,
-        };
+        const STRESS_FALLBACK: StressTestResult[] = [];
+        const VERIFY_FALLBACK = { accurate: true, errors: [], confidenceAdjustment: 0 };
 
-        let layer3Result = await Promise.race([
-          runLayer3(contractText, layer2Text, privacyMode),
-          withTimeout(25_000, L3_FALLBACK),
+        const [stressTests, verification] = await Promise.all([
+          Promise.race([
+            runStressTests(contractText, synthesisText, mode, privacyMode),
+            withTimeout(30_000, STRESS_FALLBACK),
+          ]),
+          Promise.race([
+            verifyFlags(
+              contractText,
+              parserState.accumulated["REDFLAGS"] ?? "",
+              parserState.accumulated["MISSING"] ?? "",
+              privacyMode
+            ),
+            withTimeout(20_000, VERIFY_FALLBACK),
+          ]),
         ]);
 
-        // Auto-revise red flags if Layer 3 found errors — 15 s timeout
-        if (!layer3Result.accurate && layer3Result.errors.length > 0) {
+        // Auto-revise red flags if verification found hallucinated clauses
+        if (!verification.accurate && verification.errors.length > 0) {
           const originalFlags = parserState.accumulated["REDFLAGS"] ?? "";
           const revised = await Promise.race([
-            reviseFlags(contractText, originalFlags, layer3Result.errors, privacyMode),
+            reviseFlags(contractText, originalFlags, verification.errors, privacyMode),
             withTimeout(15_000, originalFlags),
           ]);
           if (revised !== originalFlags) {
             parserState.accumulated["REDFLAGS"] = revised;
-            emit(sseEvent({ type: "section_revised", section: "REDFLAGS", text: revised }));
+            emit(
+              sseEvent({ type: "section_revised", section: "REDFLAGS", text: revised })
+            );
           }
         }
 
-        // Calculate power score
+        // ── PowerScore ───────────────────────────────────────────────────────
         const redFlags = parseJsonSection<RedFlag[]>(
           parserState.accumulated["REDFLAGS"],
           []
         );
         const missingText = parserState.accumulated["MISSING"] ?? "";
-        const powerScore = calculatePowerScore(redFlags, missingText);
+        const powerScore = calculatePowerScore(redFlags, missingText, stressTests);
+
+        const layer3Result: Layer3Result = {
+          accurate: verification.accurate,
+          errors: verification.errors,
+          confidenceAdjustment: verification.confidenceAdjustment,
+          stressTests,
+        };
 
         emit(sseEvent({ type: "layer3", result: layer3Result, powerScore }));
         emit(sseDone());
