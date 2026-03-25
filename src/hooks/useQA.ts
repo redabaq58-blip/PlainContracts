@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import type { QAMessage } from "@/types";
 
 interface SendOptions {
@@ -13,11 +13,16 @@ export function useQA() {
   const [messages, setMessages] = useState<QAMessage[]>([]);
   const [question, setQuestion] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
 
   const send = useCallback(
     async ({ contractText, analysisContext, privacyMode }: SendOptions) => {
       const q = question.trim();
       if (!q || isLoading) return;
+
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
 
       const userMessage: QAMessage = { role: "user", content: q };
       setMessages((prev) => [...prev, userMessage]);
@@ -37,6 +42,7 @@ export function useQA() {
             question: q,
             privacyMode: privacyMode ?? false,
           }),
+          signal: controller.signal,
         });
 
         if (!res.ok) throw new Error("Failed to get answer");
@@ -62,6 +68,9 @@ export function useQA() {
             if (line.startsWith("data: ")) {
               try {
                 const payload = JSON.parse(line.slice(6));
+                if (payload.error) {
+                  throw new Error(typeof payload.error === "string" ? payload.error : "Failed to get answer");
+                }
                 if (typeof payload.delta === "string") {
                   assistantText += payload.delta;
                   setMessages((prev) => {
@@ -73,13 +82,15 @@ export function useQA() {
                     return next;
                   });
                 }
-              } catch {
-                // not JSON, skip
+              } catch (parseErr) {
+                if (parseErr instanceof SyntaxError) continue;
+                throw parseErr;
               }
             }
           }
         }
       } catch (err) {
+        if ((err as Error).name === "AbortError") return;
         setMessages((prev) => {
           const next = [...prev];
           next[next.length - 1] = {
@@ -97,6 +108,7 @@ export function useQA() {
   );
 
   const reset = useCallback(() => {
+    abortRef.current?.abort();
     setMessages([]);
     setQuestion("");
   }, []);
