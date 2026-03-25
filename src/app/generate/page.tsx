@@ -12,6 +12,7 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { Navbar } from "@/components/layout/Navbar";
+import { Disclaimer } from "@/components/layout/Disclaimer";
 import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Textarea";
 import { cn } from "@/lib/utils/cn";
@@ -29,6 +30,12 @@ const CONTRACT_TYPES = [
   "License Agreement",
   "Sales Agreement",
   "Joint Venture",
+];
+
+const CONTRACT_LENGTHS = [
+  { value: "concise", label: "Concise (2-4 pages)", description: "Essential terms only" },
+  { value: "standard", label: "Standard (4-7 pages)", description: "Balanced coverage" },
+  { value: "comprehensive", label: "Comprehensive (7-10 pages)", description: "Full legal detail" },
 ];
 
 const LANGUAGES = [
@@ -52,6 +59,7 @@ export default function GeneratePage() {
   const [jurisdiction, setJurisdiction] = useState("");
   const [keyTerms, setKeyTerms] = useState("");
   const [language, setLanguage] = useState("English");
+  const [contractLength, setContractLength] = useState("standard");
   const [privacyMode, setPrivacyMode] = useState(false);
 
   // Generation state
@@ -95,6 +103,7 @@ export default function GeneratePage() {
           jurisdiction,
           keyTerms,
           language,
+          contractLength,
           privacyMode,
         }),
         signal: controller.signal,
@@ -152,7 +161,7 @@ export default function GeneratePage() {
       setStatus("error");
       setError(err instanceof Error ? err.message : "Unknown error");
     }
-  }, [contractType, partyA, partyB, jurisdiction, keyTerms, language, privacyMode]);
+  }, [contractType, partyA, partyB, jurisdiction, keyTerms, language, contractLength, privacyMode]);
 
   // ── Copy handler ─────────────────────────────────────────────────────────
 
@@ -205,6 +214,7 @@ export default function GeneratePage() {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
+      <Disclaimer />
 
       <main className="container max-w-7xl mx-auto px-4 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-[38%_1fr] gap-8 items-start">
@@ -316,6 +326,33 @@ export default function GeneratePage() {
                 disabled={isGenerating}
                 className="min-h-[120px]"
               />
+            </div>
+
+            {/* Contract Length */}
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-foreground">
+                Contract Length
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {CONTRACT_LENGTHS.map((len) => (
+                  <button
+                    key={len.value}
+                    type="button"
+                    onClick={() => setContractLength(len.value)}
+                    disabled={isGenerating}
+                    className={cn(
+                      "rounded-md border px-2 py-2 text-left transition-colors",
+                      "disabled:opacity-50 disabled:cursor-not-allowed",
+                      contractLength === len.value
+                        ? "border-primary bg-primary/10 text-foreground"
+                        : "border-border bg-background text-muted-foreground hover:border-primary/50"
+                    )}
+                  >
+                    <div className="text-xs font-medium">{len.value.charAt(0).toUpperCase() + len.value.slice(1)}</div>
+                    <div className="text-[10px] opacity-70">{len.description}</div>
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Controls row */}
