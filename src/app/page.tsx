@@ -24,9 +24,11 @@ import {
   Landmark,
   ShieldCheck,
   Clock,
-  Eye,
   Target,
   ChevronRight,
+  Layers,
+  Search,
+  Cpu,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 
@@ -35,8 +37,8 @@ const useCases = [
     icon: Briefcase,
     title: "Employment Contracts",
     description:
-      "Non-competes, termination clauses, IP assignment, stock vesting. Know what you're signing before your first day.",
-    audience: "Job seekers, employees, HR teams",
+      "Non-competes, IP assignment, stock vesting, termination triggers. Know exactly what you are committing to before day one.",
+    audience: "Job seekers · employees · HR teams",
     color: "text-blue-500",
     bg: "bg-blue-50 dark:bg-blue-950/30",
     border: "border-blue-200 dark:border-blue-900",
@@ -45,8 +47,8 @@ const useCases = [
     icon: PenTool,
     title: "Freelance & Contractor Agreements",
     description:
-      "Payment terms, scope creep protection, kill fees, IP ownership. Stop working for free on cancelled projects.",
-    audience: "Freelancers, agencies, consultants",
+      "Payment terms, scope creep, kill fees, IP ownership. Stop delivering work on projects that may never pay.",
+    audience: "Freelancers · agencies · consultants",
     color: "text-violet-500",
     bg: "bg-violet-50 dark:bg-violet-950/30",
     border: "border-violet-200 dark:border-violet-900",
@@ -55,8 +57,8 @@ const useCases = [
     icon: Home,
     title: "Lease & Rental Agreements",
     description:
-      "Security deposits, maintenance obligations, early termination penalties, renewal traps. Protect your home.",
-    audience: "Tenants, landlords, property managers",
+      "Security deposits, maintenance obligations, early termination penalties, automatic renewal traps. Protect your home.",
+    audience: "Tenants · landlords · property managers",
     color: "text-green-500",
     bg: "bg-green-50 dark:bg-green-950/30",
     border: "border-green-200 dark:border-green-900",
@@ -65,8 +67,8 @@ const useCases = [
     icon: Shield,
     title: "NDAs & Confidentiality",
     description:
-      "Scope of confidentiality, duration, carve-outs, remedies. Understand what you can and can't say — and for how long.",
-    audience: "Founders, employees, partners",
+      "Scope, duration, carve-outs, survival clauses, remedies for breach. Understand what you can say — and for how long.",
+    audience: "Founders · employees · partners",
     color: "text-slate-500",
     bg: "bg-slate-50 dark:bg-slate-950/30",
     border: "border-slate-200 dark:border-slate-900",
@@ -75,8 +77,8 @@ const useCases = [
     icon: Handshake,
     title: "Service & SaaS Agreements",
     description:
-      "SLAs, liability caps, data ownership, auto-renewals, indemnification. Don't let a vendor lock you in.",
-    audience: "Businesses, procurement teams, startups",
+      "SLAs, liability caps, data ownership, auto-renewals, indemnification clauses. Do not let a vendor lock you in without leverage.",
+    audience: "Businesses · procurement · startups",
     color: "text-amber-500",
     bg: "bg-amber-50 dark:bg-amber-950/30",
     border: "border-amber-200 dark:border-amber-900",
@@ -85,8 +87,8 @@ const useCases = [
     icon: Users,
     title: "Partnership & Shareholder Agreements",
     description:
-      "Equity splits, decision-making powers, exit clauses, drag-along rights. Align before you build together.",
-    audience: "Co-founders, investors, business partners",
+      "Equity splits, decision rights, exit clauses, drag-along and tag-along. Align before you build together.",
+    audience: "Co-founders · investors · business partners",
     color: "text-purple-500",
     bg: "bg-purple-50 dark:bg-purple-950/30",
     border: "border-purple-200 dark:border-purple-900",
@@ -95,8 +97,8 @@ const useCases = [
     icon: Scale,
     title: "Settlement & Release Agreements",
     description:
-      "What you're giving up, what you're getting, confidentiality clauses, non-disparagement. Understand the trade-off.",
-    audience: "Individuals in disputes, legal teams",
+      "What you are giving up, what you receive, confidentiality restrictions, non-disparagement. Understand the full trade-off.",
+    audience: "Individuals in disputes · legal teams",
     color: "text-red-500",
     bg: "bg-red-50 dark:bg-red-950/30",
     border: "border-red-200 dark:border-red-900",
@@ -105,8 +107,8 @@ const useCases = [
     icon: FileSignature,
     title: "Loan & Financial Agreements",
     description:
-      "Interest rates, default triggers, personal guarantees, collateral. Know the real cost before you borrow.",
-    audience: "Borrowers, small businesses, investors",
+      "Interest rates, default triggers, personal guarantees, collateral clauses. Know the real cost before you commit.",
+    audience: "Borrowers · small businesses · investors",
     color: "text-teal-500",
     bg: "bg-teal-50 dark:bg-teal-950/30",
     border: "border-teal-200 dark:border-teal-900",
@@ -118,7 +120,7 @@ const whoItsFor = [
     icon: User,
     title: "Individuals",
     description:
-      "Job seekers, tenants, freelancers — anyone handed a contract by someone with a legal team when you don't have one.",
+      "Job seekers, tenants, freelancers — anyone handed a contract by a party with a legal team when you do not have one.",
   },
   {
     icon: Building2,
@@ -130,25 +132,25 @@ const whoItsFor = [
     icon: Landmark,
     title: "Lawyers & Paralegals",
     description:
-      "Fast first-pass review. Catch red flags across high volumes. Generate balanced counter-proposals in seconds.",
+      "First-pass review in seconds. Flag structural risks across high volumes. Generate balanced counter-proposals instantly.",
   },
   {
     icon: GraduationCap,
     title: "Students & Researchers",
     description:
-      "Internship contracts, research agreements, publication rights. Learn what standard terms look like.",
+      "Internship contracts, research agreements, publication rights. Understand what standard terms look like.",
   },
   {
     icon: ShieldCheck,
     title: "HR & Procurement Teams",
     description:
-      "Review employment templates, vendor MSAs, and service agreements at scale. Sender Mode shows your exposure.",
+      "Review employment templates, vendor MSAs, and service agreements at scale. Sender Mode surfaces your exposure.",
   },
   {
     icon: Handshake,
     title: "Real Estate",
     description:
-      "Lease reviews, purchase agreements, property management contracts. Understand your obligations before you commit.",
+      "Lease reviews, purchase agreements, property management contracts. Know your obligations before you commit.",
   },
 ];
 
@@ -157,7 +159,7 @@ const features = [
     icon: GitGraph,
     title: "Visual Contract Map",
     description:
-      "See the entire contract structure at a glance: parties, obligations, powers, risks, and key dates in one professional diagram.",
+      "Parties, obligations, powers, key dates, and risk indicators in one structured diagram — built from clause-level extraction, not summaries.",
     color: "text-violet-500",
     bg: "bg-violet-50 dark:bg-violet-950/30",
     border: "border-violet-200 dark:border-violet-900",
@@ -166,16 +168,25 @@ const features = [
     icon: AlertTriangle,
     title: "Red Flags + Negotiation Emails",
     description:
-      "Every risky clause flagged by severity with a ready-to-send negotiation email and alternative clause language you can propose.",
+      "Every risky clause flagged by severity. Each flag includes a ready-to-send negotiation email and precise alternative clause language.",
     color: "text-red-500",
     bg: "bg-red-50 dark:bg-red-950/30",
     border: "border-red-200 dark:border-red-900",
   },
   {
+    icon: Shield,
+    title: "5 Structural Stress Tests",
+    description:
+      "Liability cap vs indemnity inter-play, sole remedy trap, successor risk, uncapped indemnity, and contra proferentem — applied automatically.",
+    color: "text-violet-600",
+    bg: "bg-violet-50 dark:bg-violet-950/30",
+    border: "border-violet-200 dark:border-violet-900",
+  },
+  {
     icon: Scale,
     title: "Fairness Score",
     description:
-      "A 0-100 fairness gauge showing how balanced the contract is. Backed by red flag severity analysis and missing clause detection.",
+      "A 0–100 balance score weighted by red flag severity, missing clause detection, and structural stress test outcomes.",
     color: "text-amber-500",
     bg: "bg-amber-50 dark:bg-amber-950/30",
     border: "border-amber-200 dark:border-amber-900",
@@ -184,16 +195,16 @@ const features = [
     icon: FileSignature,
     title: "Generate Contracts",
     description:
-      "Need a contract? Describe what you need and get a stress-tested, professionally drafted contract — ready to sign or customise.",
+      "Describe your requirements. Get a professionally drafted, adversarially reviewed contract with loophole detection built in.",
     color: "text-blue-500",
     bg: "bg-blue-50 dark:bg-blue-950/30",
     border: "border-blue-200 dark:border-blue-900",
   },
   {
     icon: Zap,
-    title: "Their Powers — What You're Missing",
+    title: "Control Clause Extraction",
     description:
-      "Termination rights, IP claims, non-compete scope, penalties, amendment rights. The clauses people miss until it's too late.",
+      "Termination rights, IP claims, non-compete scope, penalties, amendment powers — the clauses people miss until it is too late.",
     color: "text-amber-500",
     bg: "bg-amber-50 dark:bg-amber-950/30",
     border: "border-amber-200 dark:border-amber-900",
@@ -202,16 +213,16 @@ const features = [
     icon: Calendar,
     title: "Key Dates Timeline",
     description:
-      "Every date, duration, and deadline extracted and visualised by urgency. Notice periods. Payment terms. Renewal traps.",
+      "Every date, duration, and deadline extracted and sorted by urgency. Notice periods, payment terms, and renewal traps.",
     color: "text-sky-500",
     bg: "bg-sky-50 dark:bg-sky-950/30",
     border: "border-sky-200 dark:border-sky-900",
   },
   {
     icon: Download,
-    title: "Export as PDF or Copy",
+    title: "Export as PDF",
     description:
-      "One click exports the full analysis as a professional PDF. Or copy as plain text — ready to share with your team or attorney.",
+      "One-click export of the full analysis as a formatted PDF report. Or copy as plain text — ready to share with your team or counsel.",
     color: "text-green-500",
     bg: "bg-green-50 dark:bg-green-950/30",
     border: "border-green-200 dark:border-green-900",
@@ -220,7 +231,7 @@ const features = [
     icon: MessageSquare,
     title: "Ask Follow-Up Questions",
     description:
-      '"What happens if I quit before 90 days?" "Can they change the scope?" Get instant answers about your specific contract.',
+      '"What happens if I quit before 90 days?" "Can they change the scope unilaterally?" Answers grounded in your specific contract.',
     color: "text-indigo-500",
     bg: "bg-indigo-50 dark:bg-indigo-950/30",
     border: "border-indigo-200 dark:border-indigo-900",
@@ -229,41 +240,71 @@ const features = [
     icon: Mail,
     title: "Clause Rewrites",
     description:
-      "In Detailed mode, every red flag includes a complete, fair alternative clause — not just a tip, the actual language you can propose.",
+      "In Detailed mode, each red flag includes a complete, balanced alternative clause — not a tip, the actual language you can propose.",
     color: "text-teal-500",
     bg: "bg-teal-50 dark:bg-teal-950/30",
     border: "border-teal-200 dark:border-teal-900",
   },
+];
+
+const pipeline = [
   {
-    icon: Shield,
-    title: "Privacy Mode",
+    step: "1",
+    icon: Search,
+    title: "Contract Intelligence",
     description:
-      "Your contract text is never stored, logged, or used for training. Toggle Privacy Mode for maximum confidentiality.",
-    color: "text-slate-500",
-    bg: "bg-slate-50 dark:bg-slate-950/30",
-    border: "border-slate-200 dark:border-slate-900",
+      "Identifies contract type (15 categories), jurisdiction, parties, and flags missing elements that may render the agreement unenforceable.",
+    tag: "Classifier",
+    tagColor: "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40",
+  },
+  {
+    step: "2",
+    icon: Layers,
+    title: "Parallel Extraction",
+    description:
+      "Three specialist agents run simultaneously on the full contract text — one for obligations, one for timeline, one for control clauses. No truncation.",
+    tag: "3 agents in parallel",
+    tagColor: "text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-950/40",
+  },
+  {
+    step: "3",
+    icon: FileText,
+    title: "Legal Synthesis",
+    description:
+      "A synthesis pass produces the plain-language summary, red flags with negotiation tips, missing clause checklist, and confidence score.",
+    tag: "Streaming output",
+    tagColor: "text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40",
+  },
+  {
+    step: "4",
+    icon: Shield,
+    title: "Structural Stress Tests",
+    description:
+      "Five structural legal tests: liability cap inter-play, sole remedy trap, successor risk, uncapped indemnity, and drafting ambiguity. The checks experienced counsel applies before signing.",
+    tag: "5 tests",
+    tagColor: "text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-950/40",
   },
 ];
 
 const howItWorks = [
   {
     step: "1",
-    title: "Paste or Upload",
-    description: "Paste your contract text or upload a PDF. Any contract type, any language.",
+    title: "Paste or upload",
+    description: "Paste contract text or upload a PDF. Any contract type, any language, any length.",
     icon: FileText,
   },
   {
     step: "2",
-    title: "AI Analysis",
+    title: "Parallel extraction",
     description:
-      "3-layer AI pipeline: contract intelligence, plain-language translation, adversarial verification.",
-    icon: Eye,
+      "Three specialist agents extract obligations, timeline, and control clauses from the full document simultaneously.",
+    icon: Cpu,
   },
   {
     step: "3",
-    title: "Review & Act",
+    title: "Review your report",
     description:
-      "Get your full report in ~15 seconds. Export, negotiate, or ask follow-up questions.",
+      "Red flags, stress tests, fairness score, and a plain-language summary — in under 20 seconds. Export as PDF.",
     icon: Target,
   },
 ];
@@ -271,18 +312,18 @@ const howItWorks = [
 const audienceLevels = [
   {
     label: "Simple",
-    description: "First-time signers. No jargon. Like explaining to a friend.",
-    who: "Job seekers, tenants, students",
+    description: "Plain language, no jargon. Explains every clause as if talking to a first-time signer.",
+    who: "Job seekers · tenants · students",
   },
   {
     label: "Informed",
-    description: "Clear, direct language. You've signed contracts before but aren't a lawyer.",
-    who: "Freelancers, small business owners",
+    description: "Clear and direct. You have signed contracts before but you are not a lawyer.",
+    who: "Freelancers · small business owners",
   },
   {
     label: "Detailed",
     description: "Full clause breakdown with section references, alternative clauses, and negotiation rewrites.",
-    who: "Lawyers, procurement, experienced professionals",
+    who: "Lawyers · procurement · experienced professionals",
   },
 ];
 
@@ -316,7 +357,7 @@ export default function LandingPage() {
       <section className="container max-w-4xl mx-auto px-4 pt-20 pb-16 text-center">
         <div className="inline-flex items-center gap-1.5 text-xs font-medium bg-muted text-muted-foreground px-3 py-1 rounded-full mb-6">
           <span className="w-1.5 h-1.5 bg-green-500 rounded-full" />
-          Powered by 3-layer AI verification &middot; Free for everyone
+          Multi-agent extraction &middot; 5 structural tests &middot; Zero data retention
         </div>
 
         <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-foreground mb-6 leading-tight">
@@ -329,14 +370,14 @@ export default function LandingPage() {
         </h1>
 
         <p className="text-lg text-muted-foreground mb-4 max-w-2xl mx-auto">
-          Paste any contract. Get a complete legal analysis in 15 seconds — red flags, hidden powers,
-          missing protections, fairness score, negotiation emails, and alternative clauses.
-          Or generate a new contract from scratch.
+          Paste any contract. Parallel agents extract every obligation, deadline, and control clause —
+          then five structural stress tests check what experienced counsel checks before signing.
+          Full report in under 20 seconds.
         </p>
 
         <p className="text-sm text-muted-foreground mb-10 max-w-xl mx-auto">
-          Built for anyone who signs contracts without a lawyer on retainer.
-          Used by freelancers, job seekers, founders, tenants, HR teams, and legal professionals.
+          Built for anyone who signs contracts without in-house counsel.
+          Freelancers, founders, job seekers, HR teams, tenants, and legal professionals.
         </p>
 
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
@@ -361,7 +402,7 @@ export default function LandingPage() {
       <section className="container max-w-4xl mx-auto px-4 pb-20">
         <h2 className="text-2xl font-bold text-center mb-3">How it works</h2>
         <p className="text-center text-muted-foreground mb-10 text-sm">
-          Three steps. Fifteen seconds. Complete legal analysis.
+          Three steps. Under 20 seconds. Complete structured analysis.
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
           {howItWorks.map((item) => (
@@ -379,8 +420,37 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Analysis Pipeline */}
+      <section className="bg-muted/30 border-y border-border">
+        <div className="container max-w-5xl mx-auto px-4 py-20">
+          <h2 className="text-2xl font-bold text-center mb-2">
+            A four-stage analysis pipeline
+          </h2>
+          <p className="text-center text-muted-foreground mb-12 text-sm max-w-2xl mx-auto">
+            Most tools summarise contracts. PlainContracts extracts, cross-references, and
+            stress-tests them — the same process a litigation-experienced attorney applies.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            {pipeline.map((stage) => (
+              <div key={stage.step} className="rounded-xl border border-border bg-card p-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                    <stage.icon className="h-4 w-4 text-primary" />
+                  </div>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${stage.tagColor}`}>
+                    {stage.tag}
+                  </span>
+                </div>
+                <h3 className="text-sm font-bold mb-1.5">{stage.step}. {stage.title}</h3>
+                <p className="text-xs text-muted-foreground leading-relaxed">{stage.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* Two Perspectives */}
-      <section className="container max-w-4xl mx-auto px-4 pb-16">
+      <section className="container max-w-4xl mx-auto px-4 py-16">
         <div className="rounded-2xl border border-border bg-card p-8">
           <h2 className="text-lg font-semibold mb-2 text-center">
             Two perspectives. One contract.
@@ -398,10 +468,10 @@ export default function LandingPage() {
                 &ldquo;What does this contract mean <strong className="text-foreground">for me</strong>?&rdquo;
               </p>
               <ul className="text-xs text-muted-foreground space-y-1.5">
-                <li className="flex items-center gap-1.5"><ChevronRight className="h-3 w-3 text-primary" /> Your obligations and duties</li>
-                <li className="flex items-center gap-1.5"><ChevronRight className="h-3 w-3 text-primary" /> Their powers over you</li>
-                <li className="flex items-center gap-1.5"><ChevronRight className="h-3 w-3 text-primary" /> Red flags that hurt you</li>
-                <li className="flex items-center gap-1.5"><ChevronRight className="h-3 w-3 text-primary" /> Your protections and rights</li>
+                <li className="flex items-center gap-1.5"><ChevronRight className="h-3 w-3 text-primary" /> Your obligations and deliverables</li>
+                <li className="flex items-center gap-1.5"><ChevronRight className="h-3 w-3 text-primary" /> Unilateral powers the other party holds</li>
+                <li className="flex items-center gap-1.5"><ChevronRight className="h-3 w-3 text-primary" /> Red flags that disadvantage you</li>
+                <li className="flex items-center gap-1.5"><ChevronRight className="h-3 w-3 text-primary" /> Contra proferentem stress test applied</li>
               </ul>
             </div>
             <div className="rounded-lg border-2 border-amber-500/30 p-5 bg-amber-500/5">
@@ -413,10 +483,10 @@ export default function LandingPage() {
                 &ldquo;What does this <strong className="text-foreground">expose my business</strong> to?&rdquo;
               </p>
               <ul className="text-xs text-muted-foreground space-y-1.5">
-                <li className="flex items-center gap-1.5"><ChevronRight className="h-3 w-3 text-amber-500" /> Your business liabilities</li>
-                <li className="flex items-center gap-1.5"><ChevronRight className="h-3 w-3 text-amber-500" /> What the signer can claim</li>
-                <li className="flex items-center gap-1.5"><ChevronRight className="h-3 w-3 text-amber-500" /> Gaps in your protection</li>
-                <li className="flex items-center gap-1.5"><ChevronRight className="h-3 w-3 text-amber-500" /> Clauses that may not hold up</li>
+                <li className="flex items-center gap-1.5"><ChevronRight className="h-3 w-3 text-amber-500" /> IP ownership gaps and weak assignment clauses</li>
+                <li className="flex items-center gap-1.5"><ChevronRight className="h-3 w-3 text-amber-500" /> Missing liability caps and uncapped exposure</li>
+                <li className="flex items-center gap-1.5"><ChevronRight className="h-3 w-3 text-amber-500" /> Data privacy and GDPR/CCPA obligations</li>
+                <li className="flex items-center gap-1.5"><ChevronRight className="h-3 w-3 text-amber-500" /> Performance standard ambiguity</li>
               </ul>
             </div>
           </div>
@@ -426,10 +496,10 @@ export default function LandingPage() {
       {/* Audience Levels */}
       <section className="container max-w-4xl mx-auto px-4 pb-16">
         <h2 className="text-2xl font-bold text-center mb-2">
-          Three detail levels
+          Three depth levels
         </h2>
         <p className="text-sm text-center text-muted-foreground mb-8">
-          Choose the depth that matches your experience.
+          Choose the detail level that matches your experience and purpose.
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {audienceLevels.map((level) => (
@@ -452,7 +522,8 @@ export default function LandingPage() {
             Works with any contract type
           </h2>
           <p className="text-center text-muted-foreground mb-12 text-sm max-w-xl mx-auto">
-            Employment, freelance, real estate, NDAs, partnerships, loans, settlements — if it's a contract, PlainContracts can analyse it.
+            Employment, freelance, real estate, NDAs, SaaS, partnerships, loans, settlements —
+            15 contract types with specialised extraction and required-clause checklists.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {useCases.map((uc) => (
@@ -480,7 +551,7 @@ export default function LandingPage() {
           Built for people who sign contracts
         </h2>
         <p className="text-center text-muted-foreground mb-12 text-sm">
-          Whether you&apos;re an individual or a team, PlainContracts levels the playing field.
+          Whether you are an individual or a team, PlainContracts levels the playing field.
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {whoItsFor.map((item) => (
@@ -501,10 +572,10 @@ export default function LandingPage() {
       <section className="bg-muted/30 border-y border-border">
         <div className="container max-w-6xl mx-auto px-4 py-20">
           <h2 className="text-2xl font-bold text-center mb-3">
-            Everything a lawyer would check — automated
+            Everything a lawyer checks — built into the report
           </h2>
-          <p className="text-center text-muted-foreground mb-12 text-sm">
-            Powered by a 3-layer AI pipeline: intelligence, translation, and adversarial verification.
+          <p className="text-center text-muted-foreground mb-12 text-sm max-w-xl mx-auto">
+            Clause-level extraction, adversarial stress testing, and plain-language translation — all in one structured output.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             {features.map((f) => (
@@ -531,12 +602,12 @@ export default function LandingPage() {
             Need a contract? Generate one.
           </h2>
           <p className="text-muted-foreground mb-2 text-sm max-w-lg mx-auto">
-            Describe what you need in plain language. PlainContracts generates a complete,
-            stress-tested contract drafted with the precision of an experienced attorney.
+            Describe your requirements in plain language. PlainContracts generates a complete,
+            jurisdiction-aware contract — then runs an adversarial loophole check before delivery.
           </p>
           <p className="text-xs text-muted-foreground mb-8">
-            NDAs, service agreements, freelance contracts, employment offers, and more.
-            Export as PDF — ready to sign or customise.
+            NDAs, service agreements, freelance contracts, employment offers, SaaS terms, and more.
+            Export as PDF — ready to sign or review with counsel.
           </p>
           <Link
             href="/generate"
@@ -552,10 +623,10 @@ export default function LandingPage() {
       <section className="border-t border-border bg-muted/30">
         <div className="container max-w-2xl mx-auto px-4 py-16 text-center">
           <h2 className="text-2xl font-bold mb-3">
-            Stop signing contracts you don&apos;t fully understand.
+            Stop signing contracts you do not fully understand.
           </h2>
           <p className="text-muted-foreground mb-8 text-sm">
-            Free. No account. No data stored. Your contract stays between you and the analysis.
+            Free. No account. No data stored. Your contract is never retained or used beyond the analysis.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link
@@ -584,8 +655,7 @@ export default function LandingPage() {
             <span>PlainContracts</span>
           </div>
           <p>
-            AI-powered contract analysis tool. Not legal advice. Consult a qualified attorney
-            before signing important agreements.
+            Contract analysis and drafting tool. Not legal advice. Consult a qualified attorney before signing.
           </p>
         </div>
       </footer>

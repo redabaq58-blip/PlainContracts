@@ -36,7 +36,7 @@ export default function AnalyzePage() {
   const [language, setLanguage] = useState("English");
 
   const isRunning =
-    status === "layer1" || status === "streaming" || status === "verifying";
+    status === "layer1" || status === "extracting" || status === "streaming" || status === "verifying";
   const hasResult = status === "done" || status === "streaming" || status === "verifying";
 
   const handleAnalyze = useCallback(() => {
@@ -176,6 +176,8 @@ export default function AnalyzePage() {
               loadingText={
                 status === "layer1"
                   ? "Detecting contract type..."
+                  : status === "extracting"
+                  ? "Running parallel extraction..."
                   : status === "verifying"
                   ? "Verifying red flags..."
                   : "Translating..."
@@ -246,6 +248,7 @@ export default function AnalyzePage() {
                   status={status}
                   layer1Result={layer1Result}
                   layer3Result={layer3Result}
+                  powerScore={powerScore}
                   contractText={contractText}
                   privacyMode={privacyMode}
                 />

@@ -15,6 +15,7 @@ import {
   ChevronDown,
   ChevronUp,
   GitGraph,
+  XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { FormattedContent } from "./SectionCard";
@@ -22,9 +23,11 @@ import { RedFlagsPanel } from "./RedFlagsPanel";
 import { TimelinePanel } from "./TimelinePanel";
 import { ConfidencePanel } from "./ConfidencePanel";
 import { DiagramPanel } from "./DiagramPanel";
+import { StressTestPanel } from "./StressTestPanel";
 import { QAPanel } from "./QAPanel";
 import { cn } from "@/lib/utils/cn";
 import { parseJsonSection } from "@/lib/utils/parseSections";
+import { exportAnalysisPDF } from "@/lib/utils/exportPdf";
 import type {
   ParsedSections,
   AnalysisStatus,
@@ -39,6 +42,7 @@ interface ResultDocumentProps {
   status: AnalysisStatus;
   layer1Result: Layer1Result | null;
   layer3Result: Layer3Result | null;
+  powerScore?: number | null;
   contractText: string;
   privacyMode?: boolean;
 }
@@ -156,6 +160,7 @@ export function ResultDocument({
   status,
   layer1Result,
   layer3Result,
+  powerScore,
   contractText,
   privacyMode,
 }: ResultDocumentProps) {
@@ -188,7 +193,7 @@ export function ResultDocument({
   };
 
   const handlePrint = () => {
-    window.print();
+    exportAnalysisPDF(layer1Result, sections, powerScore ?? null, layer3Result);
   };
 
   return (
@@ -252,6 +257,23 @@ export function ResultDocument({
         )}
       </div>
 
+      {/* ── Void risk warning ─────────────────────────────────────── */}
+      {layer1Result?.voidRisk && (
+        <div className="rounded-xl border border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-950/40 px-4 py-3 flex items-start gap-3">
+          <XCircle className="h-4 w-4 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-semibold text-red-700 dark:text-red-400">
+              Void Risk — This contract may not be legally enforceable
+            </p>
+            {layer1Result.missingElements && layer1Result.missingElements.length > 0 && (
+              <p className="text-xs text-red-600 dark:text-red-400 mt-0.5">
+                Missing: {layer1Result.missingElements.join(", ")}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ── Print-only header ─────────────────────────────────────── */}
       <div className="hidden print:block mb-4">
         <h1 className="text-2xl font-bold">Contract Analysis Report</h1>
@@ -273,6 +295,7 @@ export function ResultDocument({
           layer1Result={layer1Result}
           sections={sections}
           status={status}
+          layer3Result={layer3Result}
         />
       </DocSection>
 
@@ -339,6 +362,20 @@ export function ResultDocument({
           </p>
         )}
       </DocSection>
+
+      {/* ── Stress Tests ──────────────────────────────────────────── */}
+      {(status === "verifying" || status === "done") && (
+        <DocSection
+          icon={Shield}
+          title="Senior Partner Stress Tests"
+          iconColor="text-violet-500"
+        >
+          <StressTestPanel
+            stressTests={layer3Result?.stressTests ?? []}
+            streaming={status === "verifying"}
+          />
+        </DocSection>
+      )}
 
       {/* ── Missing Clauses + Key Dates ──────────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

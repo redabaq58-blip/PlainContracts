@@ -10,12 +10,14 @@ import {
   ShieldCheck,
   ShieldAlert,
   ArrowLeftRight,
+  XCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { parseJsonSection } from "@/lib/utils/parseSections";
 import type {
   ParsedSections,
   Layer1Result,
+  Layer3Result,
   AnalysisStatus,
   RedFlag,
   KeyDate,
@@ -25,6 +27,7 @@ interface DiagramPanelProps {
   layer1Result: Layer1Result | null;
   sections: ParsedSections;
   status: AnalysisStatus;
+  layer3Result?: Layer3Result | null;
 }
 
 /** Extract bullet-list items from a text section. */
@@ -72,7 +75,7 @@ const severityBg: Record<string, string> = {
   Low: "bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800",
 };
 
-export function DiagramPanel({ layer1Result, sections, status }: DiagramPanelProps) {
+export function DiagramPanel({ layer1Result, sections, status, layer3Result }: DiagramPanelProps) {
   const streaming = status === "streaming" || status === "verifying";
 
   if (!layer1Result) {
@@ -87,6 +90,9 @@ export function DiagramPanel({ layer1Result, sections, status }: DiagramPanelPro
       </div>
     );
   }
+
+  const stressTests = layer3Result?.stressTests ?? [];
+  const triggeredTests = stressTests.filter((t) => t.triggered);
 
   const obligations = extractBullets(sections.OBLIGATIONS, 5);
   const powers = extractBullets(sections.POWERS, 5);
@@ -105,6 +111,22 @@ export function DiagramPanel({ layer1Result, sections, status }: DiagramPanelPro
 
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden">
+      {/* ── Void risk banner ────────────────────────────────────────── */}
+      {layer1Result.voidRisk && (
+        <div className="flex items-center gap-2 px-5 py-2.5 bg-red-50 dark:bg-red-950/40 border-b border-red-200 dark:border-red-800">
+          <XCircle className="h-4 w-4 text-red-600 dark:text-red-400 shrink-0" />
+          <span className="text-xs font-semibold text-red-700 dark:text-red-400">
+            Void Risk Detected
+          </span>
+          {layer1Result.missingElements && layer1Result.missingElements.length > 0 && (
+            <span className="text-xs text-red-600 dark:text-red-400 opacity-80">
+              — {layer1Result.missingElements.slice(0, 2).join(", ")}
+              {layer1Result.missingElements.length > 2 && ` +${layer1Result.missingElements.length - 2} more`}
+            </span>
+          )}
+        </div>
+      )}
+
       {/* ── Header ─────────────────────────────────────────────────── */}
       <div className="px-5 py-3.5 border-b border-border bg-muted/30 flex items-center gap-3">
         <Scale className="h-4 w-4 text-primary shrink-0" />
@@ -393,6 +415,56 @@ export function DiagramPanel({ layer1Result, sections, status }: DiagramPanelPro
           )}
         </div>
       </div>
+
+      {/* ── Stress Test Summary ──────────────────────────────────── */}
+      {stressTests.length > 0 && (
+        <div className="border-t border-border p-4">
+          <div className="flex items-center gap-1.5 mb-3">
+            <ShieldAlert className="h-3.5 w-3.5 text-violet-500 shrink-0" />
+            <span className="text-xs font-bold text-foreground uppercase tracking-wide">
+              Senior Partner Stress Tests
+            </span>
+            <span className="text-[10px] text-muted-foreground ml-1">
+              ({triggeredTests.length} of {stressTests.length} triggered)
+            </span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-5 gap-1.5">
+            {stressTests.map((test) => (
+              <div
+                key={test.test}
+                className={cn(
+                  "rounded px-2 py-1.5 text-center border",
+                  test.triggered
+                    ? test.severity === "High"
+                      ? "bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800"
+                      : "bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800"
+                    : "bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-900"
+                )}
+              >
+                <div className="text-base leading-none mb-0.5">
+                  {test.triggered ? "⚠️" : "✅"}
+                </div>
+                <div
+                  className={cn(
+                    "text-[9px] font-semibold leading-snug",
+                    test.triggered
+                      ? test.severity === "High"
+                        ? "text-red-700 dark:text-red-400"
+                        : "text-amber-700 dark:text-amber-400"
+                      : "text-green-700 dark:text-green-400"
+                  )}
+                >
+                  {test.test === "interplay" && "Cap vs Indemnity"}
+                  {test.test === "soleRemedy" && "Sole Remedy"}
+                  {test.test === "successorRisk" && "Assignment Risk"}
+                  {test.test === "contraProferentem" && "Ambiguity"}
+                  {test.test === "uncappedIndemnity" && "Uncapped Indemnity"}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
