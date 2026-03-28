@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect } from "react";
 import { Lock, Unlock, RotateCcw } from "lucide-react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Disclaimer } from "@/components/layout/Disclaimer";
+import { InAppBrowserBanner } from "@/components/layout/InAppBrowserBanner";
 import { ContractInput } from "@/components/contract/ContractInput";
 import { AudienceSelector } from "@/components/contract/AudienceSelector";
 import { ModeToggle } from "@/components/contract/ModeToggle";
@@ -96,6 +97,7 @@ export default function AnalyzePage() {
     <div className="min-h-screen bg-background">
       <Navbar />
       <Disclaimer />
+      <InAppBrowserBanner />
 
       <main className="container max-w-7xl mx-auto px-4 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-[42%_1fr] gap-8 items-start">
