@@ -36,7 +36,7 @@ export function ContractInput({ value, onChange, disabled }: ContractInputProps)
     setPdfLoading(true);
     setPdfFilename(file.name);
 
-    try {
+    const attemptUpload = async (retry = 0): Promise<void> => {
       const formData = new FormData();
       formData.append("file", file);
 
@@ -57,8 +57,29 @@ export function ContractInput({ value, onChange, disabled }: ContractInputProps)
         );
       }
       onChange(text.slice(0, MAX_CONTRACT_CHARS));
+    };
+
+    try {
+      await attemptUpload();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to read PDF");
+      const msg = err instanceof Error ? err.message : "";
+      // Railway cold-start: server waking up — retry once after 3s
+      if (msg === "Failed to fetch" || msg === "") {
+        try {
+          await new Promise((r) => setTimeout(r, 3000));
+          await attemptUpload(1);
+          return;
+        } catch (retryErr) {
+          toast.error(
+            retryErr instanceof Error && retryErr.message !== "Failed to fetch"
+              ? retryErr.message
+              : "Connection failed. The server may be starting up — please try again in a moment."
+          );
+          setPdfFilename(null);
+          return;
+        }
+      }
+      toast.error(msg || "Failed to read PDF");
       setPdfFilename(null);
     } finally {
       setPdfLoading(false);
