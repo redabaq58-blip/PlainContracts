@@ -80,6 +80,10 @@ export default function AnalyzePage() {
   };
 
   // ⌘/Ctrl + Enter keyboard shortcut
+  // Warm up the Railway server as soon as the page loads so the first
+  // upload/analyze request doesn't hit a cold-start "Failed to fetch".
+  useEffect(() => { fetch("/api/health").catch(() => {}); }, []);
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
