@@ -88,7 +88,7 @@ export default function GeneratePage() {
 
   // ── Generate handler ─────────────────────────────────────────────────────
 
-  const generate = useCallback(async () => {
+  const generate = useCallback(async (_retry = 0) => {
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
@@ -174,8 +174,18 @@ export default function GeneratePage() {
       setStatus((s) => (s === "generating" ? "done" : s));
     } catch (err) {
       if ((err as Error).name === "AbortError") return;
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      if (msg === "Failed to fetch" && _retry === 0) {
+        setGeneratedText("");
+        await new Promise((r) => setTimeout(r, 2000));
+        return generate(1);
+      }
       setStatus("error");
-      setError(err instanceof Error ? err.message : "Unknown error");
+      setError(
+        msg === "Failed to fetch"
+          ? "Connection failed. The server may be starting up — please try again in a moment."
+          : msg
+      );
     }
   }, [contractType, partyA, partyB, jurisdiction, keyTerms, language, contractLength, companyWebsite, privacyMode]);
 
@@ -456,7 +466,7 @@ export default function GeneratePage() {
 
             {/* Generate button */}
             <Button
-              onClick={generate}
+              onClick={() => generate()}
               disabled={!canGenerate || isGenerating}
               className="w-full h-11 text-sm font-semibold gap-2"
             >
@@ -512,7 +522,7 @@ export default function GeneratePage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={generate}
+                  onClick={() => generate()}
                   className="mt-4"
                 >
                   Try again
