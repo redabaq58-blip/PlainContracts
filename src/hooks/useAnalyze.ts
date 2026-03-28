@@ -36,7 +36,7 @@ export function useAnalyze() {
   const setStatus = (status: AnalysisStatus) =>
     setState((s) => ({ ...s, status }));
 
-  const analyze = useCallback(async (options: AnalyzeOptions) => {
+  const analyze = useCallback(async (options: AnalyzeOptions, _retry = 0) => {
     // Cancel any in-flight request
     abortRef.current?.abort();
     const controller = new AbortController();
@@ -156,10 +156,20 @@ export function useAnalyze() {
       }
     } catch (err) {
       if ((err as Error).name === "AbortError") return;
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      // "Failed to fetch" is a cold-start / network glitch — auto-retry once
+      if (msg === "Failed to fetch" && _retry === 0) {
+        setState((s) => ({ ...s, status: "layer1", error: null }));
+        await new Promise((r) => setTimeout(r, 2000));
+        return analyze(options, 1);
+      }
       setState((s) => ({
         ...s,
         status: "error",
-        error: err instanceof Error ? err.message : "Unknown error",
+        error:
+          msg === "Failed to fetch"
+            ? "Connection failed. The server may be starting up — please try again in a moment."
+            : msg,
       }));
     }
   }, []);

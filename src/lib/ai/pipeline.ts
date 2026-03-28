@@ -25,6 +25,23 @@ function sseDone(): string {
   return `done: true\n\n`;
 }
 
+/** Emits SSE comment pings every `intervalMs` until `signal` resolves. Prevents
+ *  mobile carrier proxies from dropping idle keep-alive connections mid-stream. */
+function startKeepAlive(
+  emit: (data: string) => void,
+  signal: Promise<unknown>,
+  intervalMs = 12_000
+): void {
+  const ping = (): void => {
+    try { emit(": ping\n\n"); } catch { /* controller closed */ }
+  };
+  const loop = async () => {
+    const interval = setInterval(ping, intervalMs);
+    try { await signal; } finally { clearInterval(interval); }
+  };
+  loop();
+}
+
 // ─── Section parser (mid-stream) ──────────────────────────────────────────────
 
 const SECTION_PREFIX = "<!-- SECTION:";
@@ -352,7 +369,7 @@ export function encodePipelineStream(options: PipelineOptions): ReadableStream {
         const STRESS_FALLBACK: StressTestResult[] = [];
         const VERIFY_FALLBACK = { accurate: true, errors: [], confidenceAdjustment: 0 };
 
-        const [stressTests, verification] = await Promise.all([
+        const layer3Work = Promise.all([
           Promise.race([
             runStressTests(contractText, synthesisText, mode, privacyMode),
             withTimeout(30_000, STRESS_FALLBACK),
@@ -367,6 +384,11 @@ export function encodePipelineStream(options: PipelineOptions): ReadableStream {
             withTimeout(20_000, VERIFY_FALLBACK),
           ]),
         ]);
+
+        // Keep the SSE connection alive during the silent Layer 3 gap
+        startKeepAlive(emit, layer3Work);
+
+        const [stressTests, verification] = await layer3Work;
 
         // Auto-revise red flags if verification found hallucinated clauses
         if (!verification.accurate && verification.errors.length > 0) {
