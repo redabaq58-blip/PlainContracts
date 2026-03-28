@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Disclaimer } from "@/components/layout/Disclaimer";
+import { InAppBrowserBanner } from "@/components/layout/InAppBrowserBanner";
 import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Textarea";
 import { cn } from "@/lib/utils/cn";
@@ -248,6 +249,7 @@ export default function GeneratePage() {
     <div className="min-h-screen bg-background">
       <Navbar />
       <Disclaimer />
+      <InAppBrowserBanner />
 
       <main className="container max-w-7xl mx-auto px-4 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-[38%_1fr] gap-8 items-start">
