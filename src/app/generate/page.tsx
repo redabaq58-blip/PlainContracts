@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Textarea";
 import { cn } from "@/lib/utils/cn";
 import { exportContractPDF } from "@/lib/utils/exportPdf";
+import { useServerReady } from "@/hooks/useServerReady";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -56,6 +57,8 @@ type Status = "idle" | "generating" | "done" | "error";
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function GeneratePage() {
+  const serverReady = useServerReady();
+
   // Form state
   const [contractType, setContractType] = useState("NDA");
   const [partyA, setPartyA] = useState("");
@@ -215,9 +218,6 @@ export default function GeneratePage() {
   };
 
   // ── Keyboard shortcut ────────────────────────────────────────────────────
-
-  // Warm up the Railway server as soon as the page loads.
-  useEffect(() => { fetch("/api/health").catch(() => {}); }, []);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -472,10 +472,15 @@ export default function GeneratePage() {
             {/* Generate button */}
             <Button
               onClick={() => generate()}
-              disabled={!canGenerate || isGenerating}
+              disabled={!canGenerate || isGenerating || !serverReady}
               className="w-full h-11 text-sm font-semibold gap-2"
             >
-              {isGenerating ? (
+              {!serverReady ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Connecting to server…
+                </>
+              ) : isGenerating ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Generating contract...
