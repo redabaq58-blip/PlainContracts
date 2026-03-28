@@ -121,7 +121,7 @@ export function ContractInput({ value, onChange, disabled }: ContractInputProps)
           <input
             ref={fileInputRef}
             type="file"
-            accept=".pdf"
+            accept="application/pdf,.pdf"
             className="hidden"
             onChange={(e) => {
               const file = e.target.files?.[0];

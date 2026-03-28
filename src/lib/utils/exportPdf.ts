@@ -244,7 +244,7 @@ export function exportAnalysisPDF(
 </body>
 </html>`;
 
-  openPrintWindow(html);
+  openPrintWindow(html, "plaincontracts-analysis.html");
 }
 
 // ─── Export Generated Contract ────────────────────────────────────────────────
@@ -284,7 +284,8 @@ export function exportContractPDF(
 </body>
 </html>`;
 
-  openPrintWindow(html);
+  const safeType = contractType.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+  openPrintWindow(html, `plaincontracts-${safeType || "contract"}.html`);
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -297,16 +298,59 @@ function escHtml(str: string): string {
     .replace(/"/g, "&quot;");
 }
 
-function openPrintWindow(html: string): void {
+function isMobile(): boolean {
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+    navigator.userAgent
+  );
+}
+
+function openPrintWindow(html: string, filename = "plaincontracts-report.html"): void {
+  if (isMobile()) {
+    // On mobile, blank popup windows are aggressively blocked by Android Chrome.
+    // Instead, open the HTML as a blob URL directly in a new tab — the user can
+    // then tap the browser share/print menu to save as PDF.
+    // Replace the auto-print script with a visible tap-to-print button.
+    const mobileFriendly = html.replace(
+      "<script>window.onload = function() { window.print(); };</script>",
+      `<div style="position:sticky;top:0;z-index:999;background:#1d4ed8;padding:14px 16px;text-align:center;">
+         <button onclick="window.print()" style="background:#fff;color:#1d4ed8;border:none;border-radius:8px;padding:12px 0;font-size:16px;font-weight:700;cursor:pointer;width:100%;max-width:340px;display:block;margin:0 auto;">
+           Save as PDF / Print
+         </button>
+         <p style="color:rgba(255,255,255,0.85);font-size:12px;margin-top:8px;">Tap the button above, then choose &ldquo;Save as PDF&rdquo;</p>
+       </div>`
+    );
+
+    const blob = new Blob([mobileFriendly], { type: "text/html" });
+    const url = URL.createObjectURL(blob);
+    const win = window.open(url, "_blank");
+
+    if (!win) {
+      // Still blocked — trigger direct download of the HTML file
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+
+    // Revoke after 2 minutes to free memory
+    setTimeout(() => URL.revokeObjectURL(url), 120_000);
+    return;
+  }
+
+  // Desktop — open blank window and write HTML (allows auto-print dialog)
   const win = window.open("", "_blank", "width=900,height=700");
   if (!win) {
-    // Popup blocked — fallback: create a blob and download
+    // Popup blocked — fallback: blob download
     const blob = new Blob([html], { type: "text/html" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "plaincontracts-report.html";
+    a.download = filename;
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
     URL.revokeObjectURL(url);
     return;
   }
