@@ -38,9 +38,10 @@ export function ContractInput({ value, onChange, disabled }: ContractInputProps)
     }
 
     setPdfLoading(true);
-    setPdfFilename(file.name);
+    setPdfFilename(null); // only set to filename after confirmed success
+    setShowChromeHint(false);
 
-    const attemptUpload = async (retry = 0): Promise<void> => {
+    const attemptUpload = async (): Promise<void> => {
       const formData = new FormData();
       formData.append("file", file);
 
@@ -61,6 +62,7 @@ export function ContractInput({ value, onChange, disabled }: ContractInputProps)
         );
       }
       onChange(text.slice(0, MAX_CONTRACT_CHARS));
+      setPdfFilename(file.name); // ← only here, after confirmed success
     };
 
     const isNetworkError = (e: unknown) => {
@@ -73,36 +75,32 @@ export function ContractInput({ value, onChange, disabled }: ContractInputProps)
     } catch (err) {
       if (!isNetworkError(err)) {
         toast.error(err instanceof Error ? err.message : "Failed to read PDF");
-        setPdfFilename(null);
-        setPdfLoading(false);
         return;
       }
 
-      // Network / cold-start failure — retry up to 2 more times
+      // Network / cold-start — retry up to 2 more times with increasing delays
       const delays = [4000, 7000];
       let lastErr: unknown = err;
       for (let attempt = 0; attempt < delays.length; attempt++) {
-        setRetryMessage(`Server is starting up… retrying (${attempt + 1}/2)`);
+        setRetryMessage(`Connecting… retrying (${attempt + 1}/2)`);
         await new Promise((r) => setTimeout(r, delays[attempt]));
         setRetryMessage(null);
         try {
-          await attemptUpload(attempt + 1);
-          setPdfLoading(false);
-          return; // success
+          await attemptUpload();
+          return; // success — pdfFilename already set inside attemptUpload
         } catch (e) {
           lastErr = e;
-          if (!isNetworkError(e)) break; // non-network error — stop retrying
+          if (!isNetworkError(e)) break;
         }
       }
 
       // All retries exhausted
       if (isNetworkError(lastErr)) {
         setShowChromeHint(true);
-        toast.error("Could not reach the server. Try opening the page directly in Chrome.");
+        toast.error("Could not reach the server. Try opening the page in Chrome.");
       } else {
         toast.error(lastErr instanceof Error ? lastErr.message : "Failed to read PDF");
       }
-      setPdfFilename(null);
     } finally {
       setPdfLoading(false);
       setRetryMessage(null);
@@ -166,7 +164,7 @@ export function ContractInput({ value, onChange, disabled }: ContractInputProps)
             ) : (
               <>
                 <Upload className="h-3 w-3 mr-1" />
-                Upload PDF
+                {pdfFilename ? "Replace PDF" : "Upload PDF"}
               </>
             )}
           </Button>
