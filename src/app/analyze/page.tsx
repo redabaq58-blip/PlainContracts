@@ -16,6 +16,7 @@ import { ResultDocument } from "@/components/output/ResultDocument";
 import { Button } from "@/components/ui/Button";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { useAnalyze } from "@/hooks/useAnalyze";
+import { useServerReady } from "@/hooks/useServerReady";
 import type { AudienceLevel, AnalysisMode } from "@/types";
 
 export default function AnalyzePage() {
@@ -29,6 +30,8 @@ export default function AnalyzePage() {
     analyze,
     reset,
   } = useAnalyze();
+
+  const serverReady = useServerReady();
 
   const [contractText, setContractText] = useState("");
   const [audienceLevel, setAudienceLevel] = useState<AudienceLevel>("INFORMED");
@@ -80,10 +83,6 @@ export default function AnalyzePage() {
   };
 
   // ⌘/Ctrl + Enter keyboard shortcut
-  // Warm up the Railway server as soon as the page loads so the first
-  // upload/analyze request doesn't hit a cold-start "Failed to fetch".
-  useEffect(() => { fetch("/api/health").catch(() => {}); }, []);
-
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
@@ -177,10 +176,12 @@ export default function AnalyzePage() {
 
             <AnalyzeButton
               onClick={handleAnalyze}
-              disabled={!contractText.trim() || isRunning}
-              loading={isRunning}
+              disabled={!contractText.trim() || isRunning || !serverReady}
+              loading={isRunning || !serverReady}
               loadingText={
-                status === "layer1"
+                !serverReady
+                  ? "Connecting to server…"
+                  : status === "layer1"
                   ? "Detecting contract type..."
                   : status === "extracting"
                   ? "Running parallel extraction..."

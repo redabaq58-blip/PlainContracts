@@ -1,12 +1,13 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Upload, X, FileText, AlertCircle, ExternalLink } from "lucide-react";
+import { Upload, X, FileText, AlertCircle, ExternalLink, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Textarea } from "@/components/ui/Textarea";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils/cn";
 import { MAX_CONTRACT_CHARS } from "@/constants";
+import { useServerReady } from "@/hooks/useServerReady";
 
 interface ContractInputProps {
   value: string;
@@ -20,6 +21,8 @@ export function ContractInput({ value, onChange, disabled }: ContractInputProps)
   const [pdfLoading, setPdfLoading] = useState(false);
   const [pdfFilename, setPdfFilename] = useState<string | null>(null);
   const [showChromeHint, setShowChromeHint] = useState(false);
+  const [retryMessage, setRetryMessage] = useState<string | null>(null);
+  const serverReady = useServerReady();
 
   const handleFile = async (file: File) => {
     const isPdf =
@@ -60,33 +63,49 @@ export function ContractInput({ value, onChange, disabled }: ContractInputProps)
       onChange(text.slice(0, MAX_CONTRACT_CHARS));
     };
 
+    const isNetworkError = (e: unknown) => {
+      const m = e instanceof Error ? e.message : "";
+      return m === "Failed to fetch" || m === "" || m === "Network request failed";
+    };
+
     try {
       await attemptUpload();
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "";
-      // Railway cold-start: server waking up — retry once after 5s
-      if (msg === "Failed to fetch" || msg === "") {
+      if (!isNetworkError(err)) {
+        toast.error(err instanceof Error ? err.message : "Failed to read PDF");
+        setPdfFilename(null);
+        setPdfLoading(false);
+        return;
+      }
+
+      // Network / cold-start failure — retry up to 2 more times
+      const delays = [4000, 7000];
+      let lastErr: unknown = err;
+      for (let attempt = 0; attempt < delays.length; attempt++) {
+        setRetryMessage(`Server is starting up… retrying (${attempt + 1}/2)`);
+        await new Promise((r) => setTimeout(r, delays[attempt]));
+        setRetryMessage(null);
         try {
-          await new Promise((r) => setTimeout(r, 5000));
-          await attemptUpload(1);
-          return;
-        } catch (retryErr) {
-          const retryMsg = retryErr instanceof Error ? retryErr.message : "";
-          if (retryMsg === "Failed to fetch" || retryMsg === "") {
-            // Still failing — show chrome hint and friendly message
-            setShowChromeHint(true);
-            toast.error("Connection failed. Try opening the page in Chrome.");
-          } else {
-            toast.error(retryMsg);
-          }
-          setPdfFilename(null);
-          return;
+          await attemptUpload(attempt + 1);
+          setPdfLoading(false);
+          return; // success
+        } catch (e) {
+          lastErr = e;
+          if (!isNetworkError(e)) break; // non-network error — stop retrying
         }
       }
-      toast.error(msg || "Failed to read PDF");
+
+      // All retries exhausted
+      if (isNetworkError(lastErr)) {
+        setShowChromeHint(true);
+        toast.error("Could not reach the server. Try opening the page directly in Chrome.");
+      } else {
+        toast.error(lastErr instanceof Error ? lastErr.message : "Failed to read PDF");
+      }
       setPdfFilename(null);
     } finally {
       setPdfLoading(false);
+      setRetryMessage(null);
     }
   };
 
@@ -130,14 +149,19 @@ export function ContractInput({ value, onChange, disabled }: ContractInputProps)
           <Button
             variant="outline"
             size="sm"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={disabled || pdfLoading}
+            onClick={() => { if (serverReady) fileInputRef.current?.click(); }}
+            disabled={disabled || pdfLoading || !serverReady}
             className="h-7 px-3 text-xs"
           >
-            {pdfLoading ? (
+            {!serverReady ? (
               <>
-                <span className="animate-spin mr-1">⟳</span>
-                Reading PDF…
+                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                Connecting…
+              </>
+            ) : pdfLoading ? (
+              <>
+                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                {retryMessage ?? "Reading PDF…"}
               </>
             ) : (
               <>
