@@ -23,7 +23,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "No file provided" }, { status: 400 });
   }
 
-  if (!file.name.toLowerCase().endsWith(".pdf")) {
+  const isPdf =
+    (file.type === "application/pdf") ||
+    file.name.toLowerCase().endsWith(".pdf");
+  if (!isPdf) {
     return NextResponse.json(
       { error: "Only PDF files are supported" },
       { status: 400 }
