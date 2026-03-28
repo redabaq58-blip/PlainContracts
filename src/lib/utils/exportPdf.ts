@@ -298,62 +298,115 @@ function escHtml(str: string): string {
     .replace(/"/g, "&quot;");
 }
 
-function isMobile(): boolean {
-  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-    navigator.userAgent
+/**
+ * Opens a print dialog using a hidden iframe — no popup window required.
+ * This is the same technique used by Print.js and other cross-platform print
+ * libraries. Works on Android Chrome, iOS Safari, and all desktop browsers
+ * because it never calls window.open() (nothing to block).
+ *
+ * Fallback chain:
+ *   1. Hidden iframe → iframe.contentWindow.print()   [primary, all platforms]
+ *   2. Blob URL opened in new tab with print button   [if iframe init fails]
+ *   3. Direct .html file download                     [if tab is also blocked]
+ */
+function openPrintWindow(html: string, filename = "plaincontracts-report.html"): void {
+  // Strip the inline auto-print script — we call print() ourselves
+  const cleanHtml = html.replace(
+    "<script>window.onload = function() { window.print(); };</script>",
+    ""
   );
+
+  // ── Primary: hidden iframe (no popup blocking on any platform) ─────────────
+  const iframe = document.createElement("iframe");
+  iframe.setAttribute("aria-hidden", "true");
+  iframe.style.cssText =
+    "position:fixed;left:-9999px;top:-9999px;width:0;height:0;border:0;opacity:0;pointer-events:none;";
+  document.body.appendChild(iframe);
+
+  const iframeWin = iframe.contentWindow;
+  const iframeDoc = iframe.contentDocument ?? iframeWin?.document;
+
+  if (iframeDoc && iframeWin) {
+    iframeDoc.open();
+    iframeDoc.write(cleanHtml);
+    iframeDoc.close();
+
+    let triggered = false;
+    const doPrint = () => {
+      if (triggered) return;
+      triggered = true;
+      try {
+        iframeWin.focus();
+        iframeWin.print();
+      } catch {
+        // Shouldn't happen (same-origin), but fall through to blob fallback
+        safeRemove(iframe);
+        blobFallback(html, filename);
+        return;
+      }
+      // Remove iframe after a long delay so the print dialog can finish
+      setTimeout(() => safeRemove(iframe), 120_000);
+    };
+
+    if (iframeDoc.readyState === "complete") {
+      // Already loaded (common for pure-HTML documents with no external assets)
+      setTimeout(doPrint, 150);
+    } else {
+      iframe.onload = () => setTimeout(doPrint, 150);
+      // Hard safety timeout — fires even if onload never triggers
+      setTimeout(doPrint, 2_000);
+    }
+    return;
+  }
+
+  // iframe never initialised (extremely rare)
+  safeRemove(iframe);
+  blobFallback(html, filename);
 }
 
-function openPrintWindow(html: string, filename = "plaincontracts-report.html"): void {
-  if (isMobile()) {
-    // On mobile, blank popup windows are aggressively blocked by Android Chrome.
-    // Instead, open the HTML as a blob URL directly in a new tab — the user can
-    // then tap the browser share/print menu to save as PDF.
-    // Replace the auto-print script with a visible tap-to-print button.
-    const mobileFriendly = html.replace(
-      "<script>window.onload = function() { window.print(); };</script>",
-      `<div style="position:sticky;top:0;z-index:999;background:#1d4ed8;padding:14px 16px;text-align:center;">
-         <button onclick="window.print()" style="background:#fff;color:#1d4ed8;border:none;border-radius:8px;padding:12px 0;font-size:16px;font-weight:700;cursor:pointer;width:100%;max-width:340px;display:block;margin:0 auto;">
-           Save as PDF / Print
-         </button>
-         <p style="color:rgba(255,255,255,0.85);font-size:12px;margin-top:8px;">Tap the button above, then choose &ldquo;Save as PDF&rdquo;</p>
-       </div>`
-    );
+function safeRemove(el: HTMLElement): void {
+  try { el.parentNode?.removeChild(el); } catch { /* already removed */ }
+}
 
-    const blob = new Blob([mobileFriendly], { type: "text/html" });
-    const url = URL.createObjectURL(blob);
-    const win = window.open(url, "_blank");
+/**
+ * Fallback when the iframe approach fails.
+ * On mobile: adds a visible "Save as PDF" button and opens blob in new tab.
+ * On desktop: tries a new-tab blob URL, then falls back to file download.
+ */
+function blobFallback(html: string, filename: string): void {
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+    navigator.userAgent
+  );
 
-    if (!win) {
-      // Still blocked — trigger direct download of the HTML file
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-    }
+  const exportHtml = isMobile
+    ? html.replace(
+        "<script>window.onload = function() { window.print(); };</script>",
+        `<div style="position:sticky;top:0;z-index:999;background:#1d4ed8;padding:14px 16px;text-align:center;">
+           <button onclick="window.print()" style="background:#fff;color:#1d4ed8;border:none;border-radius:8px;padding:12px 0;font-size:16px;font-weight:700;cursor:pointer;width:100%;max-width:340px;display:block;margin:0 auto;">
+             Save as PDF / Print
+           </button>
+           <p style="color:rgba(255,255,255,0.85);font-size:12px;margin-top:8px;">
+             Tap above, then choose &ldquo;Save as PDF&rdquo; from the menu
+           </p>
+         </div>`
+      )
+    : html;
 
-    // Revoke after 2 minutes to free memory
+  const blob = new Blob([exportHtml], { type: "text/html" });
+  const url = URL.createObjectURL(blob);
+
+  const win = window.open(url, "_blank");
+  if (win) {
     setTimeout(() => URL.revokeObjectURL(url), 120_000);
     return;
   }
 
-  // Desktop — open blank window and write HTML (allows auto-print dialog)
-  const win = window.open("", "_blank", "width=900,height=700");
-  if (!win) {
-    // Popup blocked — fallback: blob download
-    const blob = new Blob([html], { type: "text/html" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    return;
-  }
-  win.document.write(html);
-  win.document.close();
+  // Last resort: download the file directly
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
