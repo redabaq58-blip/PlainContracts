@@ -21,7 +21,10 @@ export function ContractInput({ value, onChange, disabled }: ContractInputProps)
   const [pdfFilename, setPdfFilename] = useState<string | null>(null);
 
   const handleFile = async (file: File) => {
-    if (!file.name.toLowerCase().endsWith(".pdf")) {
+    const isPdf =
+      file.type === "application/pdf" ||
+      file.name.toLowerCase().endsWith(".pdf");
+    if (!isPdf) {
       toast.error("Only PDF files are supported.");
       return;
     }
@@ -122,10 +125,14 @@ export function ContractInput({ value, onChange, disabled }: ContractInputProps)
             ref={fileInputRef}
             type="file"
             accept="application/pdf,.pdf"
-            className="hidden"
+            style={{ position: "absolute", width: 1, height: 1, opacity: 0, overflow: "hidden", zIndex: -1 }}
+            tabIndex={-1}
+            aria-hidden="true"
             onChange={(e) => {
               const file = e.target.files?.[0];
               if (file) handleFile(file);
+              // Reset so the same file can be re-selected if needed
+              e.target.value = "";
             }}
           />
         </div>
