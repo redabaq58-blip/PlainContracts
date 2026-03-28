@@ -216,6 +216,9 @@ export default function GeneratePage() {
 
   // ── Keyboard shortcut ────────────────────────────────────────────────────
 
+  // Warm up the Railway server as soon as the page loads.
+  useEffect(() => { fetch("/api/health").catch(() => {}); }, []);
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {

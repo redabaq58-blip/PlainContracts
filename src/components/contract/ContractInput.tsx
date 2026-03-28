@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Upload, X, FileText, AlertCircle } from "lucide-react";
+import { Upload, X, FileText, AlertCircle, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { Textarea } from "@/components/ui/Textarea";
 import { Button } from "@/components/ui/Button";
@@ -19,6 +19,7 @@ export function ContractInput({ value, onChange, disabled }: ContractInputProps)
   const [isDragging, setIsDragging] = useState(false);
   const [pdfLoading, setPdfLoading] = useState(false);
   const [pdfFilename, setPdfFilename] = useState<string | null>(null);
+  const [showChromeHint, setShowChromeHint] = useState(false);
 
   const handleFile = async (file: File) => {
     const isPdf =
@@ -63,18 +64,21 @@ export function ContractInput({ value, onChange, disabled }: ContractInputProps)
       await attemptUpload();
     } catch (err) {
       const msg = err instanceof Error ? err.message : "";
-      // Railway cold-start: server waking up — retry once after 3s
+      // Railway cold-start: server waking up — retry once after 5s
       if (msg === "Failed to fetch" || msg === "") {
         try {
-          await new Promise((r) => setTimeout(r, 3000));
+          await new Promise((r) => setTimeout(r, 5000));
           await attemptUpload(1);
           return;
         } catch (retryErr) {
-          toast.error(
-            retryErr instanceof Error && retryErr.message !== "Failed to fetch"
-              ? retryErr.message
-              : "Connection failed. The server may be starting up — please try again in a moment."
-          );
+          const retryMsg = retryErr instanceof Error ? retryErr.message : "";
+          if (retryMsg === "Failed to fetch" || retryMsg === "") {
+            // Still failing — show chrome hint and friendly message
+            setShowChromeHint(true);
+            toast.error("Connection failed. Try opening the page in Chrome.");
+          } else {
+            toast.error(retryMsg);
+          }
           setPdfFilename(null);
           return;
         }
@@ -158,6 +162,25 @@ export function ContractInput({ value, onChange, disabled }: ContractInputProps)
           />
         </div>
       </div>
+
+      {showChromeHint && (
+        <div className="flex items-center gap-2 text-xs rounded-md border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30 px-3 py-2 text-blue-800 dark:text-blue-300">
+          <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+          <span>
+            Connection failed.{" "}
+            <a
+              href={typeof window !== "undefined"
+                ? `intent://${window.location.host}${window.location.pathname}#Intent;scheme=https;package=com.android.chrome;end`
+                : "#"}
+              className="font-semibold underline underline-offset-2"
+            >
+              Tap here to open in Chrome
+            </a>
+            {" "}or tap ⋮ → <strong>Open in Chrome</strong> in your browser.
+          </span>
+          <button onClick={() => setShowChromeHint(false)} className="ml-auto shrink-0 opacity-60 hover:opacity-100">✕</button>
+        </div>
+      )}
 
       {pdfFilename && (
         <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted rounded-md px-3 py-1.5">
